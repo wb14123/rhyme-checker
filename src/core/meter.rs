@@ -2,6 +2,7 @@ use crate::core::rhyme::{RhymeDict, RhymeId};
 use crate::core::tone::ToneType;
 use std::collections::HashSet;
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 
 #[derive(Clone)]
 pub enum MismatchType {
@@ -12,11 +13,12 @@ pub enum MismatchType {
 }
 
 // 词牌
+#[derive(Serialize, Deserialize)]
 struct CiPai {
     name: String,
     alias: Vec<String>,
     description: String,
-    meter: [Arc<[ToneType]>],
+    meter: Vec<Vec<ToneType>>,
 }
 
 struct ScoreWeight {

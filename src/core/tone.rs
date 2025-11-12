@@ -1,12 +1,23 @@
-
+use std::fmt;
+use std::fmt::Formatter;
 use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 
-#[derive(PartialEq)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 pub enum BasicTone {
     Ping, Ze
 }
 
-#[derive(PartialEq, Debug)]
+impl fmt::Display for BasicTone {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            BasicTone::Ping => write!(f, "平"),
+            BasicTone::Ze => write!(f, "仄"),
+        }
+    }
+}
+
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
 pub enum ToneType {
     Ping, // 平声
     Ze, // 仄声
