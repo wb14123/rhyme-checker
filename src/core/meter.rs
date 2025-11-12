@@ -1,4 +1,4 @@
-use crate::core::rhythm::{RhythmDict, RhythmId};
+use crate::core::rhyme::{RhymeDict, RhymeId};
 use crate::core::tone::ToneType;
 use std::collections::HashSet;
 use std::sync::Arc;
@@ -6,7 +6,7 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub enum MismatchType {
     ToneMismatch, // 平仄不合
-    RhythmMismatch, // 韵律不合
+    RhymeMismatch, // 韵律不合
     CharMismatch, // 缺字或多字
     Match,
 }
@@ -21,13 +21,13 @@ struct CiPai {
 
 struct ScoreWeight {
     tone: f64, // 平仄
-    rhythm: f64, // 韵律
+    rhyme: f64, // 韵律
     char: f64, // 缺字或多字
 }
 
 /// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
 /// The score should be normalized after.
-fn match_sentence(sentence: &str, rule: &[ToneType], rhythm1: RhythmId, rhythm2: RhythmId) -> (f64, Vec<MismatchType>) {
+fn match_sentence(sentence: &str, rule: &[ToneType], rhyme1: RhymeId, rhyme2: RhymeId) -> (f64, Vec<MismatchType>) {
     // TODO: implement this
     (0.0, vec![])
 }
@@ -54,9 +54,9 @@ pub struct MeterMatchResult {
 }
 
 
-pub fn match_meter(rhythm_dict: &RhythmDict, text: &[Arc<String>], meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
-    let possible_rhythms = get_possible_rhythms(rhythm_dict, text);
-    let rhythms_len = possible_rhythms.len();
+pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
+    let possible_rhymes = get_possible_rhymes(rhyme_dict, text);
+    let rhymes_len = possible_rhymes.len();
     let text_len = text.len();
     let meter_len = meter.len();
     let meter_match_len = meter_len * 2 + 1;
@@ -69,16 +69,16 @@ pub fn match_meter(rhythm_dict: &RhythmDict, text: &[Arc<String>], meter: &[Arc<
     2. meter_i: Which line of meter rule this text is put.
        If meter_i is even: it's put before the (meter_i)/2 th line
        If meter_i is odd: it's put at the (meter_i)/2 th line
-    3. r1_i: Which first rhythm is used
-    4. r2_i: Which second rhythm is used
+    3. r1_i: Which first rhyme is used
+    4. r2_i: Which second rhyme is used
     */
     let mut state: Vec<Vec<Vec<Vec<Option<MeterMatchState>>>>> =
-        vec![vec![vec![vec![None; rhythms_len]; rhythms_len]; meter_match_len]; text_len];
+        vec![vec![vec![vec![None; rhymes_len]; rhymes_len]; meter_match_len]; text_len];
 
     for text_i in 0..text_len {
         for meter_i in 0..meter_match_len {
-            for r1_i in 0..rhythms_len {
-                for r2_i in 0..rhythms_len {
+            for r1_i in 0..rhymes_len {
+                for r2_i in 0..rhymes_len {
                     let meter_line = if meter_i % 2 == 0 {
                         None
                     } else {
@@ -91,8 +91,8 @@ pub fn match_meter(rhythm_dict: &RhythmDict, text: &[Arc<String>], meter: &[Arc<
                         let (score, result) = match_sentence(
                             &*text[text_i],
                             &*meter_line.unwrap(),
-                            possible_rhythms[r1_i],
-                            possible_rhythms[r2_i],
+                            possible_rhymes[r1_i],
+                            possible_rhymes[r2_i],
                         );
                         (score, result)
                     };
@@ -140,8 +140,8 @@ pub fn match_meter(rhythm_dict: &RhythmDict, text: &[Arc<String>], meter: &[Arc<
     let mut max_score = 0.0;
     let mut max_match_idx = None;
     for meter_i in 0..meter_match_len {
-        for r1_i in 0..rhythms_len {
-            for r2_i in 0..rhythms_len {
+        for r1_i in 0..rhymes_len {
+            for r2_i in 0..rhymes_len {
                 let maybe_state = state[text_len-1][meter_i][r1_i][r2_i].as_ref();
                 if maybe_state.is_none() {
                     continue;
@@ -192,13 +192,13 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Option<MeterMatchState>>
     MeterMatchResult {score, result}
 }
 
-fn get_possible_rhythms(rhythm_dict: &RhythmDict, text: &[Arc<String>]) -> Vec<RhythmId> {
+fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &[Arc<String>]) -> Vec<RhymeId> {
     let last_chars: Vec<char> = text.iter()
         .filter_map(|s| s.chars().last()).collect();
     let mut result = HashSet::new();
     for c in last_chars {
-        for rhythm in rhythm_dict.get_rhythms_by_char(&c) {
-            result.insert(rhythm.id);
+        for rhyme in rhyme_dict.get_rhymes_by_char(&c) {
+            result.insert(rhyme.id);
         }
     }
     result.into_iter().collect()

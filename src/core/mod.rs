@@ -1,3 +1,3 @@
 pub mod tone;
-pub mod rhythm;
+pub mod rhyme;
 pub mod meter;
