@@ -1,8 +1,10 @@
 use crate::core::rhyme::{RhymeDict, RhymeId};
 use crate::core::tone::ToneType;
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use colored::Colorize;
 
 #[derive(Clone)]
 pub enum MismatchType {
@@ -14,11 +16,57 @@ pub enum MismatchType {
 
 // 词牌
 #[derive(Serialize, Deserialize)]
-struct CiPai {
-    name: String,
-    alias: Vec<String>,
-    description: String,
-    meter: Vec<Vec<ToneType>>,
+pub struct CiPai {
+    pub names: Vec<String>,
+    pub variant: Option<String>,
+    pub description: Option<String>,
+    pub meter: Vec<Vec<ToneType>>,
+}
+
+impl Display for CiPai {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "词牌名：{}", self.names[0])?;
+
+        if self.names.len() > 1 {
+            writeln!(f, "别名：{}", self.names[1..].join("、"))?;
+        }
+
+        if let Some(variant) = &self.variant {
+            writeln!(f, "变体：{}", variant)?;
+        }
+
+        if let Some(description) = &self.description {
+            writeln!(f, "说明：{}", description)?;
+        }
+
+        write!(f, "格律：")?;
+        for line in &self.meter {
+            write!(f, "\n--- ")?;
+            for tone in line {
+                let tone_str = match tone {
+                    ToneType::Ping => "平",
+                    ToneType::Ze => "仄",
+                    ToneType::Zhong => "中",
+                    ToneType::PingYun => "平",
+                    ToneType::ZeYun => "仄",
+                    ToneType::PingYun2 => "平",
+                    ToneType::ZeYun2 => "仄",
+                };
+
+                let colored_tone = match tone {
+                    ToneType::PingYun => tone_str.red(),
+                    ToneType::ZeYun => tone_str.blue(),
+                    ToneType::PingYun2 => tone_str.truecolor(255, 165, 0), // orange
+                    ToneType::ZeYun2 => tone_str.green(),
+                    _ => tone_str.normal(),
+                };
+
+                write!(f, "{}", colored_tone)?;
+            }
+        }
+
+        Ok(())
+    }
 }
 
 struct ScoreWeight {
