@@ -4,6 +4,7 @@ use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum BasicTone {
     Ping, Ze
 }

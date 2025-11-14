@@ -26,6 +26,7 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
             let rhyme = Rhyme{
                 id: cur_rhyme_id,
                 name: name.clone(),
+                group: None, // 平水韵为诗韵，平仄不在统一韵部，所以设置为空
                 tone: tone.clone(),
             };
             rhymes.insert(cur_rhyme_id, Arc::new(rhyme));

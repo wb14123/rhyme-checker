@@ -12,6 +12,7 @@ pub type RhymeId = i8;
 pub struct Rhyme {
     pub id: RhymeId,
     pub name: String,
+    pub group: Option<String>, //韵部，如果为空则不检查韵部
     pub tone: BasicTone,
 }
 
