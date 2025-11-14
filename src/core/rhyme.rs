@@ -18,7 +18,11 @@ pub struct Rhyme {
 
 impl fmt::Display for Rhyme {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}, {}", self.name, self.tone)
+        write!(f, "{}, {}", self.name, self.tone)?;
+        if self.group.is_some() {
+            write!(f, ", {}", self.group.as_ref().unwrap())?;
+        }
+        Ok(())
     }
 }
 

@@ -2,9 +2,18 @@ mod core;
 mod parser;
 
 use anyhow::{bail, Result};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
+use crate::parser::rhyme_parser::parse_cilin;
+
+#[derive(Debug, Clone, ValueEnum)]
+enum DictType {
+    /// 平水韵
+    Pingshui,
+    /// 词林正韵
+    Cilin,
+}
 
 #[derive(Parser)]
 #[command(name = "rhyme-checker")]
@@ -18,9 +27,9 @@ struct Cli {
 enum Commands {
     /// 查询汉字的韵部信息
     QueryCharRhyme {
-        /// 韵书文件路径
-        #[arg(short, long, default_value = "data/rhyme/Pingshui_Rhyme.json")]
-        dict: String,
+        /// 韵书文件夹路径
+        #[arg(short, long, default_value = "data/rhyme")]
+        dict_dir: String,
 
         /// 要查询的汉字
         #[arg(value_name = "CHAR")]
@@ -29,6 +38,10 @@ enum Commands {
         /// 显示该韵部的所有汉字
         #[arg(short, long)]
         show_all: bool,
+
+        /// 韵书类型
+        #[arg(short = 't', long, value_enum, default_value = "pingshui")]
+        dict_type: DictType,
     },
 
     /// 查询词牌信息
@@ -43,8 +56,11 @@ enum Commands {
     },
 }
 
-fn query_char_rhyme(dict: &str, character: &str, show_all: bool) -> Result<()> {
-    let rhyme_dict = parse_pingshui(dict)?;
+fn query_char_rhyme(dict_dir: &str, character: &str, show_all: bool, dict_type: &DictType) -> Result<()> {
+    let rhyme_dict = match dict_type {
+        DictType::Pingshui => parse_pingshui(format!("{}/Pingshui_Rhyme.json", dict_dir).as_str())?,
+        DictType::Cilin => parse_cilin(format!("{}/Cilin_Rhyme.json", dict_dir).as_str())?,
+    };
 
     if character.chars().count() != 1 {
         bail!("请输入单个汉字");
@@ -114,10 +130,11 @@ fn main() -> Result<()> {
 
     match &cli.command {
         Commands::QueryCharRhyme {
-            dict,
+            dict_dir,
             character,
             show_all,
-        } => query_char_rhyme(dict, character, *show_all)?,
+            dict_type,
+        } => query_char_rhyme(dict_dir, character, *show_all, dict_type)?,
         Commands::QueryCiPai { file, name } => query_cipai(file, name)?,
     }
 
