@@ -37,19 +37,25 @@ pub struct RhymeDict {
 
 impl RhymeDict {
 
-    pub fn new(rhyme_to_chars: HashMap<RhymeId, Vec<char>>, rhyme_map: HashMap<RhymeId, Arc<Rhyme>>) -> Result<RhymeDict> {
+    pub fn new(rhyme_chars: Vec<Vec<char>>, rhymes: Vec<Arc<Rhyme>>) -> Result<RhymeDict> {
 
         let mut chars_to_rhymes = HashMap::new();
 
-        for (rid, chars) in &rhyme_to_chars {
+        for rid in 0..rhyme_chars.len() {
+            let chars = &rhyme_chars[rid];
             for char in chars {
                 if chars_to_rhymes.get(char).is_none() {
                     chars_to_rhymes.insert(*char, vec![]);
                 }
                 chars_to_rhymes.get_mut(char).unwrap().push(
-                    rhyme_map.get(rid).context("Rhyme for char not found in rhyme map")?.clone());
+                    rhymes.get(rid).context("Rhyme for char not found in rhyme map")?.clone());
             }
         }
+
+        let rhyme_to_chars = rhyme_chars
+            .into_iter().enumerate().map(|(k, v)| (k as RhymeId, v)).collect();
+        let rhyme_map = rhymes
+            .into_iter().enumerate().map(|(k, v)| (k as RhymeId, v)).collect();
 
         Ok(RhymeDict { chars_to_rhymes, rhyme_to_chars, rhyme_map })
     }

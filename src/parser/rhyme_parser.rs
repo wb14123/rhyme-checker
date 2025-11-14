@@ -10,8 +10,8 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
     let file = File::open(file_path)?;
     let json: Value = serde_json::from_reader(file)?;
     let json_format_err = "平水韵文件格式错误";
-    let mut rhymes= HashMap::new();
-    let mut rhyme_chars = HashMap::new();
+    let mut rhymes= vec![];
+    let mut rhyme_chars = vec![];
     let mut cur_rhyme_id: RhymeId = 0;
     for (shengbu, chars_map) in json.as_object().context(json_format_err)? {
         let tone = if shengbu == "上平声部" || shengbu == "下平声部" {
@@ -29,7 +29,7 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
                 group: None, // 平水韵为诗韵，平仄不在统一韵部，所以设置为空
                 tone: tone.clone(),
             };
-            rhymes.insert(cur_rhyme_id, Arc::new(rhyme));
+            rhymes.push(Arc::new(rhyme));
 
             // insert chars
             let raw_chars_arr =  raw_chars.as_array().context(json_format_err)?;
@@ -41,7 +41,7 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
                 }
                 chars.push(str.chars().next().unwrap());
             }
-            rhyme_chars.insert(cur_rhyme_id, chars);
+            rhyme_chars.push(chars);
 
             cur_rhyme_id += 1;
         }
