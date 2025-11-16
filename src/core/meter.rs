@@ -59,7 +59,6 @@ struct ScoreWeight {
 
 /// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
 /// The score should be normalized after.
-/// TODO: check if in the same rhyme group
 fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
         ping_yun1: Option<&Rhyme>, ze_yun1: Option<&Rhyme>,
         ping_yun2: Option<&Rhyme>, ze_yun2: Option<&Rhyme>) -> (f64, Vec<MatchType>) {
@@ -79,15 +78,17 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
         if tone_match {
             score += 0.8;
         }
-        let rhyme_match_target = match rule[i] {
-            ToneType::PingYun => ping_yun1,
-            ToneType::ZeYun => ze_yun1,
-            ToneType::PingYun2 => ping_yun2,
-            ToneType::ZeYun2 => ze_yun2,
-            _ => None,
+        let (need_count, rhyme_match_target) = match rule[i] {
+            ToneType::PingYun => (true, ping_yun1),
+            ToneType::ZeYun => (true, ze_yun1),
+            ToneType::PingYun2 => (true, ping_yun2),
+            ToneType::ZeYun2 => (true, ze_yun2),
+            _ => (false, None),
         };
-        let rhyme_match = if rhyme_match_target.is_none() {
+        let rhyme_match = if !need_count {
             true
+        } else if rhyme_match_target.is_none() {
+            false
         } else {
             rhymes.iter().find(|&r| r.deref() == rhyme_match_target.unwrap()).is_some()
         };
@@ -214,21 +215,25 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
                             } else {
                                 Some(meter[meter_i / 2].clone())
                             };
-                            let (cur_score, cur_match) = if meter_line.is_none() {
-                                // This sentence is put between/before/after the rules
-                                (0.0, vec![])
-                            } else {
-                                let (score, result) = match_sentence(
-                                    rhyme_dict,
-                                    &*text[text_i],
-                                    &*meter_line.unwrap(),
-                                    ping_rhymes[ping_yun1_i].as_deref(),
-                                    ze_rhymes[ze_yun1_i].as_deref(),
-                                    ping_rhymes[ping_yun2_i].as_deref(),
-                                    ze_rhymes[ze_yun2_i].as_deref(),
-                                );
-                                (score, result)
-                            };
+                            let (cur_score, cur_match) =
+                                if meter_line.is_none() ||
+                                    rhyme_in_different_groups(&ping_rhymes[ping_yun1_i], &ze_rhymes[ze_yun1_i]) ||
+                                    rhyme_in_different_groups(&ping_rhymes[ping_yun2_i], &ze_rhymes[ze_yun2_i])
+                                {
+                                    // This sentence is put between/before/after the rules
+                                    (0.0, vec![])
+                                } else {
+                                    let (score, result) = match_sentence(
+                                        rhyme_dict,
+                                        &*text[text_i],
+                                        &*meter_line.unwrap(),
+                                        ping_rhymes[ping_yun1_i].as_deref(),
+                                        ze_rhymes[ze_yun1_i].as_deref(),
+                                        ping_rhymes[ping_yun2_i].as_deref(),
+                                        ze_rhymes[ze_yun2_i].as_deref(),
+                                    );
+                                    (score, result)
+                                };
                             let mut last_max_match_idx = None;
                             let mut last_max_score = 0.0;
                             if text_i > 0 {
@@ -364,4 +369,11 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &[Arc<String>]) -> (Vec<Opt
         .map(|x| Some(x)).collect();
     ze.insert(0, None);
     (ping, ze)
+}
+
+fn rhyme_in_different_groups(r1: &Option<Arc<Rhyme>>, r2: &Option<Arc<Rhyme>>) -> bool {
+    if r1.is_none() || r2.is_none() {
+        return false;
+    }
+    r1.as_ref().unwrap() != r2.as_ref().unwrap()
 }
