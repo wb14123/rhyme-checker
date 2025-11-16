@@ -116,12 +116,12 @@ pub struct SentenceMatchResult {
 
 impl Display for SentenceMatchResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "+++ ")?;
         if self.text.is_some() {
+            write!(f, "+++ ")?;
             for (i, char) in self.text.as_ref().unwrap().chars().enumerate() {
                 let char_str = char.to_string();
-                let colored_char = if self.match_result.is_none() {
-                    char_str.truecolor(200, 200, 200)
+                let colored_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
+                    char_str.truecolor(180, 180, 180)
                 } else {
                     match self.match_result.as_ref().unwrap()[i] {
                         MatchType{tone_match: false, rhyme_match: false} => char_str.red(),
@@ -134,8 +134,8 @@ impl Display for SentenceMatchResult {
                 };
                 write!(f, "{}", colored_char)?;
             }
+            writeln!(f, "")?;
         }
-        writeln!(f, "")?;
         if self.meter.is_some() {
             write!(f, "--- ")?;
             for tone in self.meter.as_ref().unwrap().as_ref() {
@@ -252,7 +252,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
                                     let last_match_score =
                                         state[pre_text_i][prev_meter_i][ping_yun1_i][ze_yun1_i][ping_yun2_i][ze_yun2_i]
                                         .as_ref().unwrap().score;
-                                    if last_max_score <= last_match_score {
+                                    if last_max_score < last_match_score || (last_max_score == last_match_score && last_max_match_idx.is_none()) {
                                         last_max_score = last_match_score;
                                         last_max_match_idx = Some((pre_text_i, prev_meter_i, ping_yun1_i, ze_yun1_i, ping_yun2_i, ze_yun2_i));
                                     }
@@ -286,7 +286,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
                             continue;
                         }
                         let state = maybe_state.unwrap();
-                        if max_score <= state.score {
+                        if max_score < state.score || (max_score == state.score && max_match_idx.is_none()) {
                             max_score = state.score;
                             max_match_idx = Some((text_len - 1, meter_i, ping_yun1_i, ze_yun1_i, ping_yun2_i, ze_yun2_i));
                         }
@@ -295,29 +295,31 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
             }
         }
     }
-    build_result_form_match_state(state, max_match_idx.unwrap(), meter)
+    let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
+    result.score = result.score / max(text_len, meter_len) as f64;
+    result
 }
 
 fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatchState>>>>>>>,
         match_idx: (usize, usize, usize, usize, usize, usize), meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
-    println!("State: {:?}", state);
     let mut result = vec![];
     let match_state = state[match_idx.0][match_idx.1][match_idx.2][match_idx.3][match_idx.4][match_idx.5].as_ref().unwrap();
     let score = match_state.score;
     let mut maybe_cur_state = Some(match_state);
-    let mut cur_meter_idx = meter.len() - 1;
+    let mut cur_meter_idx = (meter.len() - 1) as isize;
     while maybe_cur_state.is_some() {
         let cur_state = maybe_cur_state.unwrap();
-        while cur_meter_idx * 2 > cur_state.meter_idx {
+        while cur_meter_idx > (cur_state.meter_idx / 2) as isize {
             result.push(
                 SentenceMatchResult{
                     match_result: None,
                     text: None,
-                    meter: Some(meter[cur_meter_idx].clone()),
+                    meter: Some(meter[cur_meter_idx as usize].clone()),
                 }
             );
             cur_meter_idx -= 1;
         }
+        cur_meter_idx -= 1;
         let meter_line = if cur_state.meter_idx % 2 == 0 {
             None
         } else {
@@ -332,11 +334,10 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatc
         maybe_cur_state = cur_state.prev_idx.and_then( |prev_idx|
             state[prev_idx.0][prev_idx.1][prev_idx.2][prev_idx.3][prev_idx.4][prev_idx.5].as_ref());
     }
-    let mut meter_i = cur_meter_idx as isize;
-    meter_i -= 1;
-    while meter_i >= 0 {
-        result.push(SentenceMatchResult { match_result: None, text: None, meter: Some(meter[meter_i as usize].clone()) });
-        meter_i -= 1;
+    while cur_meter_idx >= 0 {
+        result.push(SentenceMatchResult { match_result: None, text: None,
+            meter: Some(meter[cur_meter_idx as usize].clone()) });
+        cur_meter_idx -= 1;
     }
     result.reverse();
     MeterMatchResult {score, result}
