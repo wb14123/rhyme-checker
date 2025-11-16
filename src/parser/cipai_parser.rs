@@ -1,4 +1,4 @@
-use crate::core::meter::CiPai;
+use crate::core::cipai::CiPai;
 use anyhow::{bail, Context, Result};
 use std::fs::File;
 use std::io::Read;

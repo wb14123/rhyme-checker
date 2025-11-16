@@ -1,7 +1,6 @@
 use crate::core::rhyme::{Rhyme, RhymeDict};
 use crate::core::tone::{tone_match, BasicTone, ToneType};
 use colored::Colorize;
-use serde::{Deserialize, Serialize};
 use std::cmp::max;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
@@ -14,100 +13,6 @@ pub struct MatchType {
     pub rhyme_match: bool,
 }
 
-// 词牌
-#[derive(Serialize, Deserialize)]
-pub struct CiPai {
-    pub names: Vec<String>,
-    pub variant: Option<String>,
-    pub description: Option<String>,
-    pub meter: Vec<Vec<ToneType>>,
-}
-
-impl Display for CiPai {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "词牌名：{}", self.names[0])?;
-
-        if self.names.len() > 1 {
-            writeln!(f, "别名：{}", self.names[1..].join("、"))?;
-        }
-
-        if let Some(variant) = &self.variant {
-            writeln!(f, "变体：{}", variant)?;
-        }
-
-        if let Some(description) = &self.description {
-            writeln!(f, "说明：{}", description)?;
-        }
-
-        write!(f, "格律：")?;
-        for line in &self.meter {
-            write!(f, "\n--- ")?;
-            for tone in line {
-                write!(f, "{}", tone)?;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-struct ScoreWeight {
-    tone: f64, // 平仄
-    rhyme: f64, // 韵律
-    char: f64, // 缺字或多字
-}
-
-/// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
-/// The score should be normalized after.
-fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
-        ping_yun1: Option<&Rhyme>, ze_yun1: Option<&Rhyme>,
-        ping_yun2: Option<&Rhyme>, ze_yun2: Option<&Rhyme>) -> (f64, Vec<MatchType>) {
-
-    let mut result = vec![];
-    let mut score = 0.0;
-    let chars: Vec<_> = sentence.chars().collect();
-    let match_len = max(chars.len(), rule.len());
-    for i in 0..match_len {
-        if i >= chars.len() || i >= rule.len() {
-            result.push(MatchType{tone_match: false, rhyme_match: false});
-            continue;
-        }
-        let rhymes = rhyme_dict.get_rhymes_by_char(&chars[i]);
-        let tone_match = rhymes.iter()
-            .find(|r| tone_match(&r.tone, &rule[i])).is_some();
-        if tone_match {
-            score += 0.8;
-        }
-        let (need_count, rhyme_match_target) = match rule[i] {
-            ToneType::PingYun => (true, ping_yun1),
-            ToneType::ZeYun => (true, ze_yun1),
-            ToneType::PingYun2 => (true, ping_yun2),
-            ToneType::ZeYun2 => (true, ze_yun2),
-            _ => (false, None),
-        };
-        let rhyme_match = if !need_count {
-            true
-        } else if rhyme_match_target.is_none() {
-            false
-        } else {
-            rhymes.iter().find(|&r| r.deref() == rhyme_match_target.unwrap()).is_some()
-        };
-        if rhyme_match {
-            score += 0.2;
-        }
-        result.push(MatchType{tone_match, rhyme_match})
-    }
-    (score / match_len as f64, result)
-}
-
-#[derive(Clone, Debug)]
-struct MeterMatchState {
-    score: f64,
-    match_result: Arc<Vec<MatchType>>,
-    text: Arc<String>,
-    meter_idx: usize,
-    prev_idx: Option<(usize, usize, usize, usize, usize, usize)>,
-}
 
 pub struct SentenceMatchResult {
     pub match_result: Option<Arc<Vec<MatchType>>>, // is None if either text or meter is None
@@ -164,6 +69,14 @@ impl Display for MeterMatchResult {
     }
 }
 
+#[derive(Clone, Debug)]
+struct MeterMatchState {
+    score: f64,
+    match_result: Arc<Vec<MatchType>>,
+    text: Arc<String>,
+    meter_idx: usize,
+    prev_idx: Option<(usize, usize, usize, usize, usize, usize)>,
+}
 
 pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
     let (ping_rhymes, ze_rhymes) = get_possible_rhymes(rhyme_dict, text);
@@ -303,6 +216,50 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
     result.score = result.score / max(text_len, meter_len) as f64;
     result
+}
+
+
+/// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
+/// The score should be normalized after.
+fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
+                  ping_yun1: Option<&Rhyme>, ze_yun1: Option<&Rhyme>,
+                  ping_yun2: Option<&Rhyme>, ze_yun2: Option<&Rhyme>) -> (f64, Vec<MatchType>) {
+
+    let mut result = vec![];
+    let mut score = 0.0;
+    let chars: Vec<_> = sentence.chars().collect();
+    let match_len = max(chars.len(), rule.len());
+    for i in 0..match_len {
+        if i >= chars.len() || i >= rule.len() {
+            result.push(MatchType{tone_match: false, rhyme_match: false});
+            continue;
+        }
+        let rhymes = rhyme_dict.get_rhymes_by_char(&chars[i]);
+        let tone_match = rhymes.iter()
+            .find(|r| tone_match(&r.tone, &rule[i])).is_some();
+        if tone_match {
+            score += 0.8;
+        }
+        let (need_count, rhyme_match_target) = match rule[i] {
+            ToneType::PingYun => (true, ping_yun1),
+            ToneType::ZeYun => (true, ze_yun1),
+            ToneType::PingYun2 => (true, ping_yun2),
+            ToneType::ZeYun2 => (true, ze_yun2),
+            _ => (false, None),
+        };
+        let rhyme_match = if !need_count {
+            true
+        } else if rhyme_match_target.is_none() {
+            false
+        } else {
+            rhymes.iter().find(|&r| r.deref() == rhyme_match_target.unwrap()).is_some()
+        };
+        if rhyme_match {
+            score += 0.2;
+        }
+        result.push(MatchType{tone_match, rhyme_match})
+    }
+    (score / match_len as f64, result)
 }
 
 fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatchState>>>>>>>,
