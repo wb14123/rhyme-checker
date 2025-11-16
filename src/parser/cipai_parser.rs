@@ -93,16 +93,48 @@ fn parse_meter(meter: &str) -> Result<Vec<Vec<ToneType>>> {
 }
 
 fn parse_meter_line(line: &str) -> Result<Vec<ToneType>> {
-    // TODO: 定风波换3次韵
-    line.chars().map(|c| match c {
-        '－' => Ok(ToneType::Ping),
-        '│' => Ok(ToneType::Ze),
-        '去' => Ok(ToneType::Ze), // 忽略去声要求，直接用仄声代替
-        '＋' => Ok(ToneType::Zhong),
-        '％' => Ok(ToneType::PingYun),
-        '＊' => Ok(ToneType::ZeYun),
-        '＆' => Ok(ToneType::PingYun2),
-        '☆' => Ok(ToneType::ZeYun2),
-        c => bail!("unexpected char in meter: \"{}\"", c),
-    }).collect()
+    let chars: Vec<char> = line.chars().collect();
+    let mut result = vec![];
+    let mut i = 0;
+    while i < chars.len() {
+        let tone = if chars[i] == '－' {
+            if i+1 < chars.len() {
+                if chars[i+1] == '％' {
+                    i += 1;
+                    ToneType::PingYun
+                } else if chars[i+1] == '＆' {
+                    i += 1;
+                    ToneType::PingYun2
+                } else {
+                    ToneType::Ping
+                }
+            } else {
+                ToneType::Ping
+            }
+        } else if chars[i] == '│' || chars[i] ==  '去' {
+            if i + 1 < chars.len() {
+                if chars[i+1] == '＊' {
+                    i += 1;
+                    ToneType::ZeYun
+                } else if chars[i+1] ==  '☆' {
+                    i += 1;
+                    ToneType::ZeYun2
+                } else if chars[i+1] ==  '★' { // TODO: 定风波换3次韵
+                    i += 1;
+                    ToneType::Ze
+                } else {
+                    ToneType::Ze
+                }
+            } else {
+                ToneType::Ze
+            }
+        } else if chars[i] == '＋' {
+            ToneType::Zhong
+        } else {
+            bail!("unexpected char in meter: \"{}\", whole sentence: {}", chars[i], line);
+        };
+        result.push(tone);
+        i += 1;
+    }
+    Ok(result)
 }
