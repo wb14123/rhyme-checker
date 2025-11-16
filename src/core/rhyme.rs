@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
 use std::fmt::Formatter;
+use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 
 pub type RhymeId = i8;
@@ -32,11 +33,18 @@ impl PartialEq for Rhyme {
     }
 }
 
+impl Eq for Rhyme {}
+
+impl Hash for Rhyme {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+    }
+}
+
 // TODO: #[derive(Serialize, Deserialize)]
 pub struct RhymeDict {
     chars_to_rhymes: HashMap<char, Vec<Arc<Rhyme>>>,
     rhyme_to_chars: HashMap<RhymeId, Vec<char>>,
-    rhyme_map: HashMap<RhymeId, Arc<Rhyme>>
 }
 
 impl RhymeDict {
@@ -58,10 +66,8 @@ impl RhymeDict {
 
         let rhyme_to_chars = rhyme_chars
             .into_iter().enumerate().map(|(k, v)| (k as RhymeId, v)).collect();
-        let rhyme_map = rhymes
-            .into_iter().enumerate().map(|(k, v)| (k as RhymeId, v)).collect();
 
-        Ok(RhymeDict { chars_to_rhymes, rhyme_to_chars, rhyme_map })
+        Ok(RhymeDict { chars_to_rhymes, rhyme_to_chars})
     }
 
     pub fn get_chars_by_rhyme(&self, id: &RhymeId) -> &[char] {
@@ -69,10 +75,6 @@ impl RhymeDict {
             .get(&id)
             .map(|v| v.as_slice())
             .unwrap_or(&[])
-    }
-
-    pub fn get_rhyme_by_id(&self, id: &RhymeId) -> Option<Arc<Rhyme>> {
-        self.rhyme_map.get(&id).map(Arc::clone)
     }
 
     pub fn get_rhymes_by_char(&self, c: &char) -> &[Arc<Rhyme>] {

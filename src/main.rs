@@ -1,10 +1,14 @@
 mod core;
 mod parser;
 
+use std::sync::Arc;
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
+use crate::core::meter::match_meter;
+use crate::core::rhyme::RhymeDict;
+use crate::core::tone::ToneType;
 use crate::parser::rhyme_parser::parse_cilin;
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -19,6 +23,14 @@ enum DictType {
 #[command(name = "rhyme-checker")]
 #[command(about = "查询汉字韵律信息", long_about = None)]
 struct Cli {
+    /// 数据文件夹路径
+    #[arg(short, long, default_value = "data")]
+    data_dir: String,
+
+    /// 韵书类型
+    #[arg(short = 't', long, value_enum, default_value = "pingshui")]
+    dict_type: DictType,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -27,10 +39,6 @@ struct Cli {
 enum Commands {
     /// 查询汉字的韵部信息
     QueryCharRhyme {
-        /// 韵书文件夹路径
-        #[arg(short, long, default_value = "data/rhyme")]
-        dict_dir: String,
-
         /// 要查询的汉字
         #[arg(value_name = "CHAR")]
         character: String,
@@ -38,29 +46,31 @@ enum Commands {
         /// 显示该韵部的所有汉字
         #[arg(short, long)]
         show_all: bool,
-
-        /// 韵书类型
-        #[arg(short = 't', long, value_enum, default_value = "pingshui")]
-        dict_type: DictType,
     },
 
     /// 查询词牌信息
     QueryCiPai {
-        /// 词牌文件路径
-        #[arg(short, long, default_value = "data/cipai/cipai.xml")]
-        file: String,
-
         /// 要查询的词牌名
         #[arg(value_name = "NAME")]
         name: String,
     },
+
+    /// 检查格律
+    MatchCiPai {
+        /// 词牌名
+        #[arg(short, long)]
+        ci_pai: String,
+
+        /// 格律变种，如定格、格一等
+        #[arg(short, long)]
+        variant: String,
+
+        #[arg(value_name = "TEXT")]
+        text: String,
+    }
 }
 
-fn query_char_rhyme(dict_dir: &str, character: &str, show_all: bool, dict_type: &DictType) -> Result<()> {
-    let rhyme_dict = match dict_type {
-        DictType::Pingshui => parse_pingshui(format!("{}/Pingshui_Rhyme.json", dict_dir).as_str())?,
-        DictType::Cilin => parse_cilin(format!("{}/Cilin_Rhyme.json", dict_dir).as_str())?,
-    };
+fn query_char_rhyme(rhyme_dict: &RhymeDict, character: &str, show_all: bool) -> Result<()> {
 
     if character.chars().count() != 1 {
         bail!("请输入单个汉字");
@@ -125,17 +135,45 @@ fn query_cipai(file: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
+fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, text: String) -> Result<()> {
+
+    let cipai_list = parse_cipai(file)?;
+    let cipai= cipai_list
+        .iter()
+        .find(|cipai| cipai.names.iter().any(|n| n.contains(name))
+            && cipai.variant.is_some()
+            && cipai.variant.as_ref().unwrap() == variant
+        );
+    if cipai.is_none() {
+        bail!("未找到词牌: {}, {}", name, variant);
+    }
+    let text_vec: Vec<Arc<String>> = text.split('\n').map(|l| Arc::new(l.to_string())).collect();
+    let meter_vec: Vec<Arc<[ToneType]>> = cipai.as_ref().unwrap().meter.iter()
+        .cloned()
+        .map(Into::into)
+        .collect();
+    let result = match_meter(rhyme_dict, &text_vec, &meter_vec);
+    println!("{}", result);
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    let rhyme_dict = match cli.dict_type {
+        DictType::Pingshui => parse_pingshui(format!("{}/rhyme/Pingshui_Rhyme.json", cli.data_dir).as_str())?,
+        DictType::Cilin => parse_cilin(format!("{}/rhyme/Cilin_Rhyme.json", cli.data_dir).as_str())?,
+    };
+
+    let cipai_file = format!("{}/cipai/cipai.xml", cli.data_dir);
+
     match &cli.command {
-        Commands::QueryCharRhyme {
-            dict_dir,
-            character,
-            show_all,
-            dict_type,
-        } => query_char_rhyme(dict_dir, character, *show_all, dict_type)?,
-        Commands::QueryCiPai { file, name } => query_cipai(file, name)?,
+        Commands::QueryCharRhyme { character, show_all} =>
+            query_char_rhyme(&rhyme_dict, character, *show_all)?,
+        Commands::QueryCiPai { name } =>
+            query_cipai(cipai_file.as_str(), name)?,
+        Commands::MatchCiPai {ci_pai, variant, text} =>
+            match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text.clone())?,
     }
 
     Ok(())

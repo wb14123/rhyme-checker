@@ -1,9 +1,11 @@
 use std::fmt;
 use std::fmt::Formatter;
+use std::hash::Hash;
 use anyhow::{bail, Result};
+use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-#[derive(Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(Debug)]
 pub enum BasicTone {
     Ping, Ze
@@ -18,7 +20,7 @@ impl fmt::Display for BasicTone {
     }
 }
 
-#[derive(PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
 pub enum ToneType {
     Ping, // 平声
     Ze, // 仄声
@@ -27,6 +29,30 @@ pub enum ToneType {
     ZeYun, // 仄声押韵
     PingYun2, // 平声押韵，换韵
     ZeYun2, // 仄声押韵，换韵
+}
+
+impl fmt::Display for ToneType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        let tone_str = match self {
+            ToneType::Ping => "平",
+            ToneType::Ze => "仄",
+            ToneType::Zhong => "中",
+            ToneType::PingYun => "平",
+            ToneType::ZeYun => "仄",
+            ToneType::PingYun2 => "平",
+            ToneType::ZeYun2 => "仄",
+        };
+
+        let colored_tone = match self {
+            ToneType::PingYun => tone_str.red(),
+            ToneType::ZeYun => tone_str.blue(),
+            ToneType::PingYun2 => tone_str.truecolor(255, 165, 0), // orange
+            ToneType::ZeYun2 => tone_str.green(),
+            _ => tone_str.normal(),
+        };
+
+        write!(f, "{}", colored_tone)
+    }
 }
 
 /// Will return error if pass in ToneType::Zhong since it can map to either Ping or Ze
@@ -39,16 +65,9 @@ pub fn get_basic_tone(t: &ToneType) -> Result<BasicTone> {
 }
 
 
-pub fn tone_match(t1: &ToneType, t2: &ToneType) -> bool {
-    if t1 == &ToneType::Zhong || t2 == &ToneType::Zhong {
+pub fn tone_match(t1: &BasicTone, t2: &ToneType) -> bool {
+    if t2 == &ToneType::Zhong {
         return true;
     }
-    get_basic_tone(t1).unwrap() == get_basic_tone(t2).unwrap()
-}
-
-pub fn tone_is_yun(t: &ToneType) -> bool {
-    match t {
-        ToneType::PingYun | ToneType::PingYun2 | ToneType::ZeYun | ToneType::ZeYun2 => true,
-        _ => false,
-    }
+    t1 == &get_basic_tone(t2).unwrap()
 }

@@ -61,7 +61,7 @@ fn test_parse_pingshui_rhyme_id_lookup() {
     let rhyme_dict = parse_pingshui(file_path).expect("Should parse successfully");
 
     // Get rhyme by ID (first rhyme should be ID 0)
-    let rhyme_0 = rhyme_dict.get_rhyme_by_id(&0);
+    let rhyme_0 = rhyme_dict.get_rhymes_by_char(&'东').first();
     assert!(rhyme_0.is_some(), "Rhyme ID 0 should exist");
 
     let rhyme = rhyme_0.unwrap();
@@ -86,7 +86,7 @@ fn test_parse_pingshui_tone_detection() {
     let rhyme_dict = parse_pingshui(file_path).expect("Should parse successfully");
 
     // Verify that all characters from "一东" are in Ping tone
-    let rhyme_0 = rhyme_dict.get_rhyme_by_id(&0).expect("Rhyme 0 should exist");
+    let rhyme_0 = rhyme_dict.get_rhymes_by_char(&'东').first().unwrap();
     assert_eq!(rhyme_0.tone, BasicTone::Ping);
     assert_eq!(rhyme_0.group, None, "平水韵 should have no group");
 }
@@ -152,7 +152,7 @@ fn test_parse_cilin_rhyme_id_lookup() {
     let rhyme_dict = parse_cilin(file_path).expect("Should parse successfully");
 
     // Get rhyme by ID (first rhyme should be ID 0)
-    let rhyme_0 = rhyme_dict.get_rhyme_by_id(&0);
+    let rhyme_0 = rhyme_dict.get_rhymes_by_char(&'东').first();
     assert!(rhyme_0.is_some(), "Rhyme ID 0 should exist");
 
     let rhyme = rhyme_0.unwrap();
@@ -178,7 +178,7 @@ fn test_parse_cilin_tone_detection() {
     let rhyme_dict = parse_cilin(file_path).expect("Should parse successfully");
 
     // Verify that rhyme 0 (first rhyme) has correct structure
-    let rhyme_0 = rhyme_dict.get_rhyme_by_id(&0).expect("Rhyme 0 should exist");
+    let rhyme_0 = rhyme_dict.get_rhymes_by_char(&'东').first().unwrap();
 
     // First rhyme should be 平声 of 第一部
     assert_eq!(rhyme_0.tone, BasicTone::Ping, "First rhyme should be Ping tone");
@@ -192,7 +192,7 @@ fn test_parse_cilin_group_consistency() {
 
     // Test that characters in the same group can have different tones
     // For example, a character might appear in both 平声 and 仄声 of the same group
-    let rhyme_0 = rhyme_dict.get_rhyme_by_id(&0).expect("Rhyme 0 should exist");
+    let rhyme_0 = rhyme_dict.get_rhymes_by_char(&'东').first().unwrap();
 
     // All characters in this rhyme should be mappable back
     let chars = rhyme_dict.get_chars_by_rhyme(&0);
