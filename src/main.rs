@@ -51,8 +51,12 @@ enum Commands {
     /// 查询词牌信息
     QueryCiPai {
         /// 要查询的词牌名
-        #[arg(value_name = "NAME")]
-        name: String,
+        #[arg(short, long)]
+        ci_pai: String,
+
+        /// 格律变种，如定格、格一等，可选，如为空则显示此词牌所有格律变种
+        #[arg(short, long)]
+        variant: Option<String>,
     },
 
     /// 检查格律
@@ -111,12 +115,16 @@ fn query_char_rhyme(rhyme_dict: &RhymeDict, character: &str, show_all: bool) -> 
     Ok(())
 }
 
-fn query_cipai(file: &str, name: &str) -> Result<()> {
+fn query_cipai(file: &str, name: &str, variant: Option<&String>) -> Result<()> {
     let cipai_list = parse_cipai(file)?;
 
     let matching_cipai: Vec<_> = cipai_list
         .iter()
-        .filter(|cipai| cipai.names.iter().any(|n| n.contains(name)))
+        .filter(|cipai| {
+            let cipai_match = cipai.names.iter().any(|n| n.contains(name));
+            let variant_match = variant.is_none() || (variant == cipai.variant.as_ref());
+            cipai_match && variant_match
+        })
         .collect();
 
     if matching_cipai.is_empty() {
@@ -169,8 +177,8 @@ fn main() -> Result<()> {
     match &cli.command {
         Commands::QueryCharRhyme { character, show_all} =>
             query_char_rhyme(&rhyme_dict, character, *show_all)?,
-        Commands::QueryCiPai { name } =>
-            query_cipai(cipai_file.as_str(), name)?,
+        Commands::QueryCiPai { ci_pai, variant } =>
+            query_cipai(cipai_file.as_str(), ci_pai, variant.as_ref())?,
         Commands::MatchCiPai {ci_pai, variant, text} =>
             match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text)?,
     }
