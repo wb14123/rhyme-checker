@@ -28,7 +28,7 @@ struct Cli {
     data_dir: String,
 
     /// 韵书类型
-    #[arg(short = 't', long, value_enum, default_value = "pingshui")]
+    #[arg(short = 't', long, value_enum, default_value = "cilin")]
     dict_type: DictType,
 
     /// 输出不用颜色区分格律和结果
