@@ -52,18 +52,18 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
 pub fn parse_cilin(file_path: &str) -> Result<RhymeDict> {
     let file = File::open(file_path)?;
     let json: Value = serde_json::from_reader(file)?;
-    let json_format_err = "词林正韵文件格式错误";
+    let json_format_err = "文件格式错误";
     let mut rhymes= vec![];
     let mut rhyme_chars = vec![];
     let mut cur_rhyme_id: RhymeId = 0;
     for (group, tone_map) in json.as_object().context(json_format_err)? {
         for (tone_str, raw_chars) in tone_map.as_object().context(json_format_err)? {
-            let tone = if tone_str == "平声" {
+            let tone = if tone_str == "平声" || tone_str == "平" {
                 BasicTone::Ping
-            } else if tone_str == "仄声" || tone_str == "入声" { // 不对入声单独处理
+            } else if tone_str == "仄声" || tone_str == "仄" || tone_str == "入声" { // 不对入声单独处理
                 BasicTone::Ze
             } else {
-                bail!("词林正韵文件中错误声部名称: {}", tone_str);
+                bail!("文件中错误声部名称: {}", tone_str);
             };
             // insert rhyme
             let rhyme = Rhyme {
@@ -80,7 +80,7 @@ pub fn parse_cilin(file_path: &str) -> Result<RhymeDict> {
             for raw_char in raw_chars_arr {
                 let str = raw_char.as_str().context(json_format_err)?;
                 if str.chars().count() != 1 {
-                    bail!("词林正韵 Json 文件中不是单字: \"{}\"", str);
+                    bail!("Json 文件中不是单字: \"{}\"", str);
                 }
                 chars.push(str.chars().next().unwrap());
             }

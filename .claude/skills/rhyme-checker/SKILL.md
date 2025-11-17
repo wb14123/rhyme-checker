@@ -111,6 +111,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 - `-t, --dict-type <类型>`: 韵书类型
   - `pingshui`: 平水韵
   - `cilin`: 词林正韵（默认）
+  - `xinyun`: 中华新韵
 
 **使用不同韵书的示例:**
 ```bash

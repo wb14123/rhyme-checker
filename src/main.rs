@@ -17,6 +17,8 @@ enum DictType {
     Pingshui,
     /// 词林正韵
     Cilin,
+    /// 中华新韵
+    Xinyun,
 }
 
 #[derive(Parser)]
@@ -182,6 +184,7 @@ fn main() -> Result<()> {
     let rhyme_dict = match cli.dict_type {
         DictType::Pingshui => parse_pingshui(format!("{}/rhyme/Pingshui_Rhyme.json", cli.data_dir).as_str())?,
         DictType::Cilin => parse_cilin(format!("{}/rhyme/Cilin_Rhyme.json", cli.data_dir).as_str())?,
+        DictType::Xinyun => parse_cilin(format!("{}/rhyme/Xinyun_Rhyme.json", cli.data_dir).as_str())?,
     };
 
     let cipai_file = format!("{}/cipai/cipai.xml", cli.data_dir);
