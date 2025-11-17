@@ -83,11 +83,15 @@ pub fn tone_match(t1: &BasicTone, t2: &ToneType) -> bool {
 
 /// 获取格律颜色说明
 pub fn get_tone_legend() -> String {
-    format!(
-        "格律说明：平=平声 仄=仄声 中=平仄皆可 {}=平韵 {}=仄韵 {}=换韵后平韵 {}=换韵后仄韵",
-        "平(红色)".red(),
-        "仄(蓝色)".blue(),
-        "平(橙色)".truecolor(255, 165, 0),
-        "仄(绿色)".green()
-    )
+    if SHOULD_COLORIZE.should_colorize() {
+        format!(
+            "格律说明：平=平声 仄=仄声 中=平仄皆可 {}=平韵 {}=仄韵 {}=换韵后平韵 {}=换韵后仄韵",
+            "平(红色)".red(),
+            "仄(蓝色)".blue(),
+            "平(橙色)".truecolor(255, 165, 0),
+            "仄(绿色)".green()
+        )
+    } else {
+        "格律说明：如是韵脚，括号内标注声部".to_string()
+    }
 }

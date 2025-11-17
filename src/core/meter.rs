@@ -10,12 +10,16 @@ use colored::control::SHOULD_COLORIZE;
 
 /// 获取匹配结果颜色说明
 pub fn get_match_legend() -> String {
-    format!(
-        "匹配说明：{}=完全匹配 {}=仅音调匹配 {}=不匹配",
-        "字(白色)".white(),
-        "字(橙色)".truecolor(255, 165, 0),
-        "字(红色)".red()
-    )
+    if SHOULD_COLORIZE.should_colorize() {
+        format!(
+            "匹配结果说明：{}=完全匹配 {}=仅音调匹配 {}=不匹配",
+            "字(白色)".white(),
+            "字(橙色)".truecolor(255, 165, 0),
+            "字(红色)".red()
+        )
+    } else {
+        "匹配结果说明：字后括号内说明匹配错误原因：平仄错或是韵脚错".to_string()
+    }
 }
 
 #[derive(Debug)]
@@ -290,7 +294,7 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
         if rhyme_match {
             score += 0.2;
         }
-        let match_type = if rhyme_match {
+        let match_type = if rhyme_match && tone_match {
             MatchType::AllMatch
         } else if tone_match {
             MatchType::ToneOnly
