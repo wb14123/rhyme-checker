@@ -8,9 +8,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 #[derive(Debug)]
-pub struct MatchType {
-    pub tone_match: bool,
-    pub rhyme_match: bool,
+pub enum MatchType {
+    NoMatch,
+    ToneOnly,
+    AllMatch,
 }
 
 
@@ -30,12 +31,10 @@ impl Display for SentenceMatchResult {
                     char_str.truecolor(180, 180, 180)
                 } else {
                     match self.match_result.as_ref().unwrap()[i] {
-                        MatchType{tone_match: false, rhyme_match: false} => char_str.red(),
-                        MatchType{tone_match: true, rhyme_match: false} =>
+                        MatchType::NoMatch => char_str.red(),
+                        MatchType::ToneOnly  =>
                             char_str.truecolor(255, 165, 0), // orange
-                        MatchType{tone_match: false, rhyme_match: true} =>
-                            char_str.truecolor(255, 165, 210), // pink
-                        MatchType{tone_match: true, rhyme_match: true} => char_str.white(),
+                        MatchType::AllMatch => char_str.white(),
                     }
                 };
                 write!(f, "{}", colored_char)?;
@@ -241,7 +240,7 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
     let match_len = max(chars.len(), rule.len());
     for i in 0..match_len {
         if i >= chars.len() || i >= rule.len() {
-            result.push(MatchType{tone_match: false, rhyme_match: false});
+            result.push(MatchType::NoMatch);
             continue;
         }
         let rhymes = rhyme_dict.get_rhymes_by_char(&chars[i]);
@@ -267,7 +266,14 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
         if rhyme_match {
             score += 0.2;
         }
-        result.push(MatchType{tone_match, rhyme_match})
+        let match_type = if rhyme_match {
+            MatchType::AllMatch
+        } else if tone_match {
+            MatchType::ToneOnly
+        } else {
+            MatchType::NoMatch
+        };
+        result.push(match_type)
     }
     (score / match_len as f64, result)
 }
