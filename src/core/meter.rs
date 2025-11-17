@@ -7,6 +7,16 @@ use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 use std::sync::Arc;
 
+/// 获取匹配结果颜色说明
+pub fn get_match_legend() -> String {
+    format!(
+        "匹配说明：{}=完全匹配 {}=仅音调匹配 {}=不匹配",
+        "字(白色)".white(),
+        "字(橙色)".truecolor(255, 165, 0),
+        "字(红色)".red()
+    )
+}
+
 #[derive(Debug)]
 pub enum MatchType {
     NoMatch,

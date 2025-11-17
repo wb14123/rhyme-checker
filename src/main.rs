@@ -6,9 +6,9 @@ use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
-use crate::core::meter::match_meter;
+use crate::core::meter::{get_match_legend, match_meter};
 use crate::core::rhyme::RhymeDict;
-use crate::core::tone::ToneType;
+use crate::core::tone::{ToneType, get_tone_legend};
 use crate::parser::rhyme_parser::parse_cilin;
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -132,6 +132,8 @@ fn query_cipai(file: &str, name: &str, variant: Option<&String>) -> Result<()> {
         return Ok(());
     }
 
+    println!("{}\n", get_tone_legend());
+
     for (i, cipai) in matching_cipai.iter().enumerate() {
         if i > 0 {
             println!("\n{}", "=".repeat(60));
@@ -159,6 +161,8 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
         .cloned()
         .map(Into::into)
         .collect();
+    println!("{}", get_tone_legend());
+    println!("{}\n", get_match_legend());
     let result = match_meter(rhyme_dict, text, &meter_vec);
     println!("{}", result);
     Ok(())

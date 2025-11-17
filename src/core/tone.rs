@@ -71,3 +71,14 @@ pub fn tone_match(t1: &BasicTone, t2: &ToneType) -> bool {
     }
     t1 == &get_basic_tone(t2).unwrap()
 }
+
+/// 获取格律颜色说明
+pub fn get_tone_legend() -> String {
+    format!(
+        "格律说明：平=平声 仄=仄声 中=平仄皆可 {}=平韵 {}=仄韵 {}=换韵后平韵 {}=换韵后仄韵",
+        "平(红色)".red(),
+        "仄(蓝色)".blue(),
+        "平(橙色)".truecolor(255, 165, 0),
+        "仄(绿色)".green()
+    )
+}
