@@ -250,8 +250,8 @@ fn parse_input_text(text: &str) -> Vec<Arc<String>> {
     let delimiters = vec!['.', '。',  ',', '，', '、', '?', '？', '!',  '！', '\n'];
     text
         .split(|c| delimiters.contains(&c))
-        .filter(|l| l.len() > 0)
         .map(|l| Arc::new(l.trim().to_string()))
+        .filter(|l| l.len() > 0)
         .collect()
 }
 
