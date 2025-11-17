@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Skill(rhyme-checker)",
+      "Bash(./target/debug/rhyme-checker:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
