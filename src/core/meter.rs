@@ -376,5 +376,5 @@ fn rhyme_in_different_groups(r1: &Option<Arc<Rhyme>>, r2: &Option<Arc<Rhyme>>) -
     if r1.is_none() || r2.is_none() {
         return false;
     }
-    r1.as_ref().unwrap() != r2.as_ref().unwrap()
+    r1.as_ref().unwrap().group != r2.as_ref().unwrap().group
 }

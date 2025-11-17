@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 pub type RhymeId = i8;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Rhyme {
     pub id: RhymeId,
     pub name: String,
