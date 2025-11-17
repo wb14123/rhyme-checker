@@ -135,7 +135,7 @@ fn query_cipai(file: &str, name: &str) -> Result<()> {
     Ok(())
 }
 
-fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, text: String) -> Result<()> {
+fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, text: &str) -> Result<()> {
 
     let cipai_list = parse_cipai(file)?;
     let cipai= cipai_list
@@ -147,12 +147,11 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     if cipai.is_none() {
         bail!("未找到词牌: {}, {}", name, variant);
     }
-    let text_vec: Vec<Arc<String>> = text.split('\n').map(|l| Arc::new(l.to_string())).collect();
     let meter_vec: Vec<Arc<[ToneType]>> = cipai.as_ref().unwrap().meter.iter()
         .cloned()
         .map(Into::into)
         .collect();
-    let result = match_meter(rhyme_dict, &text_vec, &meter_vec);
+    let result = match_meter(rhyme_dict, text, &meter_vec);
     println!("{}", result);
     Ok(())
 }
@@ -173,7 +172,7 @@ fn main() -> Result<()> {
         Commands::QueryCiPai { name } =>
             query_cipai(cipai_file.as_str(), name)?,
         Commands::MatchCiPai {ci_pai, variant, text} =>
-            match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text.clone())?,
+            match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text)?,
     }
 
     Ok(())

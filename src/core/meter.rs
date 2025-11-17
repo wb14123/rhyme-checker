@@ -78,8 +78,9 @@ struct MeterMatchState {
     prev_idx: Option<(usize, usize, usize, usize, usize, usize)>,
 }
 
-pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
-    let (ping_rhymes, ze_rhymes) = get_possible_rhymes(rhyme_dict, text);
+pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
+    let text = parse_input_text(input_text);
+    let (ping_rhymes, ze_rhymes) = get_possible_rhymes(rhyme_dict, &text);
     let mut meter_rhymes = HashSet::new();
     for meter_line in meter {
         let tone = meter_line.last();
@@ -218,6 +219,15 @@ pub fn match_meter(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[T
     result
 }
 
+fn parse_input_text(text: &str) -> Vec<Arc<String>> {
+    let delimiters = vec!['.', '。',  ',', '，', '、', '?', '？', '!',  '！', '\n'];
+    text
+        .split(|c| delimiters.contains(&c))
+        .filter(|l| l.len() > 0)
+        .map(|l| Arc::new(l.to_string()))
+        .collect()
+}
+
 
 /// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
 /// The score should be normalized after.
@@ -305,7 +315,7 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatc
     MeterMatchResult {score, result}
 }
 
-fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &[Arc<String>]) -> (Vec<Option<Arc<Rhyme>>>, Vec<Option<Arc<Rhyme>>>) {
+fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>) -> (Vec<Option<Arc<Rhyme>>>, Vec<Option<Arc<Rhyme>>>) {
     let last_chars: Vec<char> = text.iter()
         .filter_map(|s| s.chars().last()).collect();
     let mut ping_set = HashSet::new();
