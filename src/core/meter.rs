@@ -251,7 +251,7 @@ fn parse_input_text(text: &str) -> Vec<Arc<String>> {
     text
         .split(|c| delimiters.contains(&c))
         .filter(|l| l.len() > 0)
-        .map(|l| Arc::new(l.to_string()))
+        .map(|l| Arc::new(l.trim().to_string()))
         .collect()
 }
 
