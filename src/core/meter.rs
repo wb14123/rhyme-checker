@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 use std::sync::Arc;
+use colored::control::SHOULD_COLORIZE;
 
 /// 获取匹配结果颜色说明
 pub fn get_match_legend() -> String {
@@ -37,17 +38,30 @@ impl Display for SentenceMatchResult {
             write!(f, "+++ ")?;
             for (i, char) in self.text.as_ref().unwrap().chars().enumerate() {
                 let char_str = char.to_string();
-                let colored_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
-                    char_str.truecolor(180, 180, 180)
+                if SHOULD_COLORIZE.should_colorize() {
+                    let colored_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
+                        char_str.truecolor(180, 180, 180)
+                    } else {
+                        match self.match_result.as_ref().unwrap()[i] {
+                            MatchType::NoMatch => char_str.red(),
+                            MatchType::ToneOnly =>
+                                char_str.truecolor(255, 165, 0), // orange
+                            MatchType::AllMatch => char_str.white(),
+                        }
+                    };
+                    write!(f, "{}", colored_char)?;
                 } else {
-                    match self.match_result.as_ref().unwrap()[i] {
-                        MatchType::NoMatch => char_str.red(),
-                        MatchType::ToneOnly  =>
-                            char_str.truecolor(255, 165, 0), // orange
-                        MatchType::AllMatch => char_str.white(),
-                    }
-                };
-                write!(f, "{}", colored_char)?;
+                    let anno_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
+                        char_str
+                    } else {
+                        match self.match_result.as_ref().unwrap()[i] {
+                            MatchType::NoMatch => format!("{}（平仄错）", char_str),
+                            MatchType::ToneOnly => format!("{}（韵脚错）", char_str),
+                            MatchType::AllMatch => char_str,
+                        }
+                    };
+                    write!(f, "{}", anno_char)?;
+                }
             }
             writeln!(f, "")?;
         }

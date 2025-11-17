@@ -31,6 +31,10 @@ struct Cli {
     #[arg(short = 't', long, value_enum, default_value = "pingshui")]
     dict_type: DictType,
 
+    /// 输出不用颜色区分格律和结果
+    #[arg(long)]
+    no_color: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -170,6 +174,10 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if cli.no_color {
+        colored::control::set_override(false);
+    }
 
     let rhyme_dict = match cli.dict_type {
         DictType::Pingshui => parse_pingshui(format!("{}/rhyme/Pingshui_Rhyme.json", cli.data_dir).as_str())?,

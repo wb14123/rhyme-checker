@@ -4,6 +4,7 @@ use std::hash::Hash;
 use anyhow::{bail, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
+use colored::control::SHOULD_COLORIZE;
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(Debug)]
@@ -43,15 +44,23 @@ impl fmt::Display for ToneType {
             ToneType::ZeYun2 => "仄",
         };
 
-        let colored_tone = match self {
-            ToneType::PingYun => tone_str.red(),
-            ToneType::ZeYun => tone_str.blue(),
-            ToneType::PingYun2 => tone_str.truecolor(255, 165, 0), // orange
-            ToneType::ZeYun2 => tone_str.green(),
-            _ => tone_str.normal(),
-        };
-
-        write!(f, "{}", colored_tone)
+        if SHOULD_COLORIZE.should_colorize() {
+            let colored_tone = match self {
+                ToneType::PingYun => tone_str.red(),
+                ToneType::ZeYun => tone_str.blue(),
+                ToneType::PingYun2 => tone_str.truecolor(255, 165, 0), // orange
+                ToneType::ZeYun2 => tone_str.green(),
+                _ => tone_str.normal(),
+            };
+            write!(f, "{}", colored_tone)
+        } else {
+            let anno_tone = match self {
+                ToneType::PingYun | ToneType::ZeYun => format!("{}（韵一）", tone_str),
+                ToneType::PingYun2 | ToneType::ZeYun2 => format!("{}（韵二）", tone_str),
+                _ => tone_str.to_string(),
+            };
+            write!(f, "{}", anno_tone)
+        }
     }
 }
 
