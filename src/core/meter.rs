@@ -242,7 +242,8 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[ToneT
         }
     }
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
-    result.score = result.score / max(text_len, meter_len) as f64;
+    let non_empty_meter_len = meter.iter().filter(|m| m.len() > 0).count();
+    result.score = result.score / max(text_len, non_empty_meter_len) as f64;
     result
 }
 
