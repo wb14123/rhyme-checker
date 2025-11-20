@@ -5,6 +5,7 @@ use anyhow::{bail, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use colored::control::SHOULD_COLORIZE;
+use palette::{FromColor, Hsl, Srgb};
 
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[derive(Debug)]
@@ -22,41 +23,39 @@ impl fmt::Display for BasicTone {
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
-pub enum ToneType {
+pub enum MeterToneType {
     Ping, // 平声
     Ze, // 仄声
     Zhong, // 平声仄声皆可
-    PingYun, // 平声押韵
-    ZeYun, // 仄声押韵
-    PingYun2, // 平声押韵，换韵
-    ZeYun2, // 仄声押韵，换韵
 }
 
-impl fmt::Display for ToneType {
+#[derive(Clone, PartialEq, Eq, Hash, Debug, Serialize, Deserialize)]
+pub struct MeterTone {
+    pub tone: MeterToneType,
+    pub rhyme_num: Option<i32>,
+}
+
+impl fmt::Display for MeterTone {
+
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let tone_str = match self {
-            ToneType::Ping => "平",
-            ToneType::Ze => "仄",
-            ToneType::Zhong => "中",
-            ToneType::PingYun => "平",
-            ToneType::ZeYun => "仄",
-            ToneType::PingYun2 => "平",
-            ToneType::ZeYun2 => "仄",
+        let tone_str = match self.tone {
+            MeterToneType::Ping => "平",
+            MeterToneType::Ze => "仄",
+            MeterToneType::Zhong => "中",
         };
 
         if SHOULD_COLORIZE.should_colorize() {
-            let colored_tone = match self {
-                ToneType::PingYun => tone_str.red(),
-                ToneType::ZeYun => tone_str.blue(),
-                ToneType::PingYun2 => tone_str.truecolor(255, 165, 0), // orange
-                ToneType::ZeYun2 => tone_str.green(),
+            let colored_tone = match self.rhyme_num {
+                Some(n) => {
+                    let color = get_contrasting_color(n as usize);
+                    tone_str.truecolor(color.0, color.1, color.2)
+                }
                 _ => tone_str.normal(),
             };
             write!(f, "{}", colored_tone)
         } else {
-            let anno_tone = match self {
-                ToneType::PingYun | ToneType::ZeYun => format!("{}（韵一）", tone_str),
-                ToneType::PingYun2 | ToneType::ZeYun2 => format!("{}（韵二）", tone_str),
+            let anno_tone = match self.rhyme_num {
+                Some(num) => format!("{}（韵{}）", tone_str, num),
                 _ => tone_str.to_string(),
             };
             write!(f, "{}", anno_tone)
@@ -64,18 +63,38 @@ impl fmt::Display for ToneType {
     }
 }
 
+pub fn get_contrasting_color(n: usize) -> (u8, u8, u8) {
+    // Use golden ratio conjugate for optimal hue distribution
+    let golden_ratio_conjugate = 0.618033988749895;
+    let hue = (n as f32 * golden_ratio_conjugate) % 1.0;
+
+    // Alternate saturation and lightness for better distinction
+    let saturation = if n % 3 == 0 { 0.9 } else if n % 3 == 1 { 1.0 } else { 0.8 };
+    let lightness = if n % 2 == 0 { 0.5 } else { 0.65 };
+
+    let hsl = Hsl::new(hue * 360.0, saturation, lightness);
+    let rgb: Srgb = Srgb::from_color(hsl);
+
+    (
+        (rgb.red * 255.0) as u8,
+        (rgb.green * 255.0) as u8,
+        (rgb.blue * 255.0) as u8,
+    )
+}
+
+
 /// Will return error if pass in ToneType::Zhong since it can map to either Ping or Ze
-pub fn get_basic_tone(t: &ToneType) -> Result<BasicTone> {
-    match t {
-        ToneType::Ping | ToneType::PingYun | ToneType::PingYun2 => Ok(BasicTone::Ping),
-        ToneType::Ze | ToneType::ZeYun | ToneType::ZeYun2 => Ok(BasicTone::Ze),
+pub fn get_basic_tone(t: &MeterTone) -> Result<BasicTone> {
+    match t.tone {
+        MeterToneType::Ping  => Ok(BasicTone::Ping),
+        MeterToneType::Ze => Ok(BasicTone::Ze),
         _ => bail!("Cannot map to basic tone for type {:?}", t)
     }
 }
 
 
-pub fn tone_match(t1: &BasicTone, t2: &ToneType) -> bool {
-    if t2 == &ToneType::Zhong {
+pub fn tone_match(t1: &BasicTone, t2: &MeterTone) -> bool {
+    if t2.tone == MeterToneType::Zhong {
         return true;
     }
     t1 == &get_basic_tone(t2).unwrap()

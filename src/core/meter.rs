@@ -1,12 +1,12 @@
 use crate::core::rhyme::{Rhyme, RhymeDict};
-use crate::core::tone::{tone_match, BasicTone, ToneType};
+use crate::core::tone::{tone_match, BasicTone, MeterTone, MeterToneType};
+use colored::control::SHOULD_COLORIZE;
 use colored::Colorize;
 use std::cmp::max;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
 use std::sync::Arc;
-use colored::control::SHOULD_COLORIZE;
 
 /// 获取匹配结果颜色说明
 pub fn get_match_legend() -> String {
@@ -33,7 +33,7 @@ pub enum MatchType {
 pub struct SentenceMatchResult {
     pub match_result: Option<Arc<Vec<MatchType>>>, // is None if either text or meter is None
     pub text: Option<Arc<String>>, // None if there is no meter between the text
-    pub meter: Option<Arc<[ToneType]>>,
+    pub meter: Option<Arc<[MeterTone]>>,
 }
 
 impl Display for SentenceMatchResult {
@@ -102,12 +102,13 @@ struct MeterMatchState {
     match_result: Arc<Vec<MatchType>>,
     text: Arc<String>,
     meter_idx: usize,
-    prev_idx: Option<(usize, usize, usize, usize, usize, usize)>,
+    prev_idx: Option<(usize, usize, usize)>,
 }
 
-pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
+pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[MeterTone]>]) -> MeterMatchResult {
     let text = parse_input_text(input_text);
-    let (ping_rhymes, ze_rhymes) = get_possible_rhymes(rhyme_dict, &text);
+    let possible_rhymes = get_possible_rhymes(rhyme_dict, &text, meter);
+    println!("{:?}", possible_rhymes);
     let mut meter_rhymes = HashSet::new();
     for meter_line in meter {
         let tone = meter_line.last();
@@ -117,104 +118,72 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[ToneT
         meter_rhymes.insert(tone.unwrap());
     }
 
-    let ping_yun1_len = if meter_rhymes.contains(&ToneType::PingYun) {
-        ping_rhymes.len()
-    } else {
-        1
-    };
-    let ze_yun1_len = if meter_rhymes.contains(&ToneType::ZeYun) {
-        ze_rhymes.len()
-    } else {
-        1
-    };
-    let ping_yun2_len = if meter_rhymes.contains(&ToneType::PingYun2) {
-        ping_rhymes.len()
-    } else {
-        1
-    };
-    let ze_yun2_len = if meter_rhymes.contains(&ToneType::ZeYun2) {
-        ze_rhymes.len()
-    } else {
-        1
-    };
-
     let text_len = text.len();
     let meter_len = meter.len();
     let meter_match_len = meter_len * 2 + 1;
+    let rhymes_len = possible_rhymes.len();
 
-    let mut state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatchState>>>>>>> =
-        vec![vec![vec![vec![vec![vec![None; ze_yun2_len]; ping_yun2_len]; ze_yun1_len]; ping_yun1_len]; meter_match_len]; text_len];
+    let mut state: Vec<Vec<Vec<Option<MeterMatchState>>>> =
+        vec![vec![vec![None; rhymes_len]; meter_match_len]; text_len];
 
     for text_i in 0..text_len {
         for meter_i in 0..meter_match_len {
-            for ping_yun1_i in 0..ping_yun1_len {
-                for ze_yun1_i in 0..ze_yun1_len {
-                    for ping_yun2_i in 0..ping_yun2_len {
-                        for ze_yun2_i in 0..ze_yun2_len {
-                            let meter_line = if meter_i % 2 == 0 {
-                                None
-                            } else {
-                                Some(meter[meter_i / 2].clone())
-                            };
-                            let (cur_score, cur_match) =
-                                if meter_line.is_none() ||
-                                    rhyme_in_different_groups(&ping_rhymes[ping_yun1_i], &ze_rhymes[ze_yun1_i]) ||
-                                    rhyme_in_different_groups(&ping_rhymes[ping_yun2_i], &ze_rhymes[ze_yun2_i])
-                                {
-                                    // This sentence is put between/before/after the rules
-                                    (0.0, vec![])
-                                } else {
-                                    let (score, result) = match_sentence(
-                                        rhyme_dict,
-                                        &*text[text_i],
-                                        &*meter_line.unwrap(),
-                                        ping_rhymes[ping_yun1_i].as_deref(),
-                                        ze_rhymes[ze_yun1_i].as_deref(),
-                                        ping_rhymes[ping_yun2_i].as_deref(),
-                                        ze_rhymes[ze_yun2_i].as_deref(),
-                                    );
-                                    (score, result)
-                                };
-                            let mut last_max_match_idx = None;
-                            let mut last_max_score = 0.0;
-                            if text_i > 0 {
-                                let pre_text_i = text_i - 1;
+            for rhyme_i in 0..rhymes_len {
+                let meter_line = if meter_i % 2 == 0 {
+                    None
+                } else {
+                    Some(meter[meter_i / 2].clone())
+                };
+                let (cur_score, cur_match) =
+                    if meter_line.is_none() {
+                        // This sentence is put between/before/after the rules
+                        (0.0, vec![])
+                    } else {
+                        let (score, result) = match_sentence(
+                            rhyme_dict,
+                            &*text[text_i],
+                            &*meter_line.unwrap(),
+                            &possible_rhymes[rhyme_i],
+                        );
+                        (score, result)
+                    };
+                let mut last_max_match_idx = None;
+                let mut last_max_score = 0.0;
+                if text_i > 0 {
+                    let pre_text_i = text_i - 1;
 
-                                let prev_meter_i_end = if meter_i % 2 == 0 {
-                                    /* If the current sentence is put between the rules, the last sentence
-                                    can be put at the same position since there can be multiple sentences
-                                    in the gap.
-                                    */
-                                    meter_i
-                                } else {
-                                    /* if current sentence is put right at a line of the rule, the previous
-                                    sentence must be put in a previous position.
-                                     */
-                                    meter_i - 1
-                                };
-                                // +1 for exclusive boundary
-                                for prev_meter_i in 0..(prev_meter_i_end + 1) {
-                                    // There must be a state for previous sentence, if not, there is a bug
-                                    let last_match_score =
-                                        state[pre_text_i][prev_meter_i][ping_yun1_i][ze_yun1_i][ping_yun2_i][ze_yun2_i]
-                                        .as_ref().unwrap().score;
-                                    if last_max_score < last_match_score || (last_max_score == last_match_score && last_max_match_idx.is_none()) {
-                                        last_max_score = last_match_score;
-                                        last_max_match_idx = Some((pre_text_i, prev_meter_i, ping_yun1_i, ze_yun1_i, ping_yun2_i, ze_yun2_i));
-                                    }
-                                }
-                            }
-                            let cur_state = MeterMatchState {
-                                score: last_max_score + cur_score,
-                                match_result: Arc::new(cur_match),
-                                meter_idx: meter_i,
-                                text: text[text_i].clone(),
-                                prev_idx: last_max_match_idx,
-                            };
-                            state[text_i][meter_i][ping_yun1_i][ze_yun1_i][ping_yun2_i][ze_yun2_i] = Some(cur_state);
+                    let prev_meter_i_end = if meter_i % 2 == 0 {
+                        /* If the current sentence is put between the rules, the last sentence
+                        can be put at the same position since there can be multiple sentences
+                        in the gap.
+                        */
+                        meter_i
+                    } else {
+                        /* if current sentence is put right at a line of the rule, the previous
+                        sentence must be put in a previous position.
+                         */
+                        meter_i - 1
+                    };
+                    // +1 for exclusive boundary
+                    for prev_meter_i in 0..(prev_meter_i_end + 1) {
+                        // There must be a state for previous sentence, if not, there is a bug
+                        let last_match_score =
+                            state[pre_text_i][prev_meter_i][rhyme_i]
+                                .as_ref().unwrap().score;
+                        if last_max_score < last_match_score || (last_max_score == last_match_score && last_max_match_idx.is_none()) {
+                            last_max_score = last_match_score;
+                            last_max_match_idx = Some((pre_text_i, prev_meter_i, rhyme_i));
                         }
                     }
                 }
+                let cur_state = MeterMatchState {
+                    score: last_max_score + cur_score,
+                    match_result: Arc::new(cur_match),
+                    meter_idx: meter_i,
+                    text: text[text_i].clone(),
+                    prev_idx: last_max_match_idx,
+                };
+                state[text_i][meter_i][rhyme_i] = Some(cur_state);
             }
         }
     }
@@ -223,21 +192,15 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[ToneT
     let mut max_score = 1.0;
     let mut max_match_idx = None;
     for meter_i in 0..meter_match_len {
-        for ping_yun1_i in 0..ping_yun1_len {
-            for ze_yun1_i in 0..ze_yun1_len {
-                for ping_yun2_i in 0..ping_yun2_len {
-                    for ze_yun2_i in 0..ze_yun2_len {
-                        let maybe_state = state[text_len - 1][meter_i][ping_yun1_i][ze_yun1_i][ping_yun2_i][ze_yun2_i].as_ref();
-                        if maybe_state.is_none() {
-                            continue;
-                        }
-                        let state = maybe_state.unwrap();
-                        if max_score < state.score || (max_score == state.score && max_match_idx.is_none()) {
-                            max_score = state.score;
-                            max_match_idx = Some((text_len - 1, meter_i, ping_yun1_i, ze_yun1_i, ping_yun2_i, ze_yun2_i));
-                        }
-                    }
-                }
+        for rhyme_i in 0..rhymes_len {
+            let maybe_state = state[text_len - 1][meter_i][rhyme_i].as_ref();
+            if maybe_state.is_none() {
+                continue;
+            }
+            let state = maybe_state.unwrap();
+            if max_score < state.score || (max_score == state.score && max_match_idx.is_none()) {
+                max_score = state.score;
+                max_match_idx = Some((text_len - 1, meter_i, rhyme_i));
             }
         }
     }
@@ -259,9 +222,8 @@ fn parse_input_text(text: &str) -> Vec<Arc<String>> {
 
 /// Calculate the similarity score for two sentences. If length doesn't match, the score is 0.
 /// The score should be normalized after.
-fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
-                  ping_yun1: Option<&Rhyme>, ze_yun1: Option<&Rhyme>,
-                  ping_yun2: Option<&Rhyme>, ze_yun2: Option<&Rhyme>) -> (f64, Vec<MatchType>) {
+fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[MeterTone],
+                  rhyme_map: &HashMap<MeterTone, Option<Arc<Rhyme>>>) -> (f64, Vec<MatchType>) {
 
     let mut result = vec![];
     let mut score = 0.0;
@@ -278,19 +240,17 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
         if tone_match {
             score += 0.8;
         }
-        let (need_count, rhyme_match_target) = match rule[i] {
-            ToneType::PingYun => (true, ping_yun1),
-            ToneType::ZeYun => (true, ze_yun1),
-            ToneType::PingYun2 => (true, ping_yun2),
-            ToneType::ZeYun2 => (true, ze_yun2),
-            _ => (false, None),
+        let (need_count, rhyme_match_target) = if rule[i].rhyme_num.is_none() {
+            (false, None)
+        } else {
+            (true, rhyme_map.get(&rule[i]).unwrap().clone())
         };
         let rhyme_match = if !need_count {
             true
         } else if rhyme_match_target.is_none() {
             false
         } else {
-            rhymes.iter().find(|&r| r.deref() == rhyme_match_target.unwrap()).is_some()
+            rhymes.iter().find(|&r| r.deref() == rhyme_match_target.as_ref().unwrap().deref()).is_some()
         };
         if rhyme_match {
             score += 0.2;
@@ -307,10 +267,10 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[ToneType],
     (score / match_len as f64, result)
 }
 
-fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatchState>>>>>>>,
-        match_idx: (usize, usize, usize, usize, usize, usize), meter: &[Arc<[ToneType]>]) -> MeterMatchResult {
+fn build_result_form_match_state(state: Vec<Vec<Vec<Option<MeterMatchState>>>>,
+                                 match_idx: (usize, usize, usize), meter: &[Arc<[MeterTone]>]) -> MeterMatchResult {
     let mut result = vec![];
-    let match_state = state[match_idx.0][match_idx.1][match_idx.2][match_idx.3][match_idx.4][match_idx.5].as_ref().unwrap();
+    let match_state = state[match_idx.0][match_idx.1][match_idx.2].as_ref().unwrap();
     let score = match_state.score;
     let mut maybe_cur_state = Some(match_state);
     let mut cur_meter_idx = (meter.len() - 1) as isize;
@@ -339,7 +299,7 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatc
         };
         result.push(sentence_match_result);
         maybe_cur_state = cur_state.prev_idx.and_then( |prev_idx|
-            state[prev_idx.0][prev_idx.1][prev_idx.2][prev_idx.3][prev_idx.4][prev_idx.5].as_ref());
+            state[prev_idx.0][prev_idx.1][prev_idx.2].as_ref());
     }
     while cur_meter_idx >= 0 {
         result.push(SentenceMatchResult { match_result: None, text: None,
@@ -350,7 +310,8 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Vec<Vec<Vec<Option<MeterMatc
     MeterMatchResult {score, result}
 }
 
-fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>) -> (Vec<Option<Arc<Rhyme>>>, Vec<Option<Arc<Rhyme>>>) {
+fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &[Arc<[MeterTone]>]
+        ) -> Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>> {
     let last_chars: Vec<char> = text.iter()
         .filter_map(|s| s.chars().last()).collect();
     let mut ping_set = HashSet::new();
@@ -364,13 +325,102 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>) -> (Vec<
             }
         }
     }
-    let mut ping: Vec<_> = ping_set.into_iter()
-        .map(|x| Some(x)).collect();
-    ping.insert(0, None);
-    let mut ze: Vec<_> = ze_set.into_iter()
-        .map(|x| Some(x)).collect();
-    ze.insert(0, None);
-    (ping, ze)
+    let ping: Vec<_> = ping_set.into_iter().collect();
+    let ze: Vec<_> = ze_set.into_iter().collect();
+    let mut meter_tone_set = HashSet::new();
+    for meter_line in meter {
+        for meter_tone in meter_line.iter() {
+            if meter_tone.rhyme_num.is_some() {
+                meter_tone_set.insert(meter_tone.clone());
+            }
+        }
+    }
+    println!("{:?}", meter_tone_set);
+    get_possible_rhyme_combines(ping, ze, &meter_tone_set)
+}
+
+fn get_possible_rhyme_combines(ping_rhymes: Vec<Arc<Rhyme>>, ze_rhymes: Vec<Arc<Rhyme>>,
+                               meter_tones_set: &HashSet<MeterTone>) -> Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>> {
+
+    #[derive(Debug)]
+    struct State {
+        pub ping_idx: usize,
+        pub ze_idx: usize,
+        pub meter_idx: usize,
+        pub rhyme: Option<Arc<Rhyme>>,
+        pub prev: Option<Arc<State>>,
+    }
+
+    let mut result = vec![];
+    let mut states = vec![State{
+        ping_idx: 0, ze_idx: 0, meter_idx: 0, rhyme: None, prev: None}];
+
+    let meter_tones: Vec<MeterTone> = meter_tones_set.iter().map(|x| x.clone()).collect();
+    while !states.is_empty() {
+        let state = Arc::new(states.pop().unwrap());
+        if state.meter_idx >= meter_tones.len() {
+            let mut backtrace = HashMap::new();
+            let mut backtrace_state = Some(state);
+            let mut last_meter_idx = 0;
+            while backtrace_state.is_some()  {
+                let s = backtrace_state.as_ref().unwrap();
+                if s.meter_idx > 0 && s.meter_idx != last_meter_idx {
+                    backtrace.insert(meter_tones[s.meter_idx-1].clone(), s.rhyme.clone());
+                    last_meter_idx = s.meter_idx;
+                }
+                backtrace_state = s.prev.clone();
+            }
+            result.push(backtrace);
+            continue;
+        }
+        // TODO: check if ping ze in different group
+        if state.ping_idx < ping_rhymes.len() && meter_tones[state.meter_idx].tone == MeterToneType::Ping {
+            // put current ping rhyme into the meter position
+            states.push(State {
+                ping_idx: state.ping_idx + 1,
+                ze_idx: state.ze_idx,
+                meter_idx: state.meter_idx + 1,
+                rhyme: Some(ping_rhymes[state.ping_idx].clone()),
+                prev: Some(state.clone()),
+            });
+            // skip current ping rhyme and try next
+            states.push(State {
+                ping_idx: state.ping_idx + 1,
+                ze_idx: state.ze_idx,
+                meter_idx: state.meter_idx,
+                rhyme: None,
+                prev: Some(state.clone()),
+            });
+        }
+        if state.ze_idx < ze_rhymes.len() && meter_tones[state.meter_idx].tone == MeterToneType::Ze {
+            // put current ze rhyme into the meter position
+            states.push(State {
+                ping_idx: state.ping_idx,
+                ze_idx: state.ze_idx + 1,
+                meter_idx: state.meter_idx + 1,
+                rhyme: Some(ze_rhymes[state.ze_idx].clone()),
+                prev: Some(state.clone()),
+            });
+            // skip current ze rhyme and try next
+            states.push(State {
+                ping_idx: state.ping_idx,
+                ze_idx: state.ze_idx + 1,
+                meter_idx: state.meter_idx,
+                rhyme: None,
+                prev: Some(state.clone())
+            })
+        }
+        // put empty rhyme to the current meter
+        states.push(State {
+            ping_idx: state.ping_idx,
+            ze_idx: state.ze_idx,
+            meter_idx: state.meter_idx + 1,
+            rhyme: None,
+            prev: Some(state.clone()),
+        })
+    }
+
+    result
 }
 
 fn rhyme_in_different_groups(r1: &Option<Arc<Rhyme>>, r2: &Option<Arc<Rhyme>>) -> bool {

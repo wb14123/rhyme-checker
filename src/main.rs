@@ -8,7 +8,7 @@ use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
 use crate::core::meter::{get_match_legend, match_meter};
 use crate::core::rhyme::RhymeDict;
-use crate::core::tone::{ToneType, get_tone_legend};
+use crate::core::tone::{MeterTone, get_tone_legend};
 use crate::parser::rhyme_parser::parse_cilin;
 
 #[derive(Debug, Clone, ValueEnum)]
@@ -163,7 +163,7 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     if cipai.is_none() {
         bail!("未找到词牌: {}, {}", name, variant);
     }
-    let meter_vec: Vec<Arc<[ToneType]>> = cipai.as_ref().unwrap().meter.iter()
+    let meter_vec: Vec<Arc<[MeterTone]>> = cipai.as_ref().unwrap().meter.iter()
         .cloned()
         .map(Into::into)
         .collect();

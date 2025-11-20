@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
-use crate::core::tone::ToneType;
+use crate::core::tone::MeterTone;
 
 // 词牌
 #[derive(Serialize, Deserialize)]
@@ -8,7 +8,7 @@ pub struct CiPai {
     pub names: Vec<String>,
     pub variant: Option<String>,
     pub description: Option<String>,
-    pub meter: Vec<Vec<ToneType>>,
+    pub meter: Vec<Vec<MeterTone>>,
 }
 
 impl Display for CiPai {

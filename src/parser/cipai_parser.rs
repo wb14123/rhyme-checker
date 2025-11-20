@@ -2,7 +2,7 @@ use crate::core::cipai::CiPai;
 use anyhow::{bail, Context, Result};
 use std::fs::File;
 use std::io::Read;
-use crate::core::tone::ToneType;
+use crate::core::tone::{MeterTone, MeterToneType};
 
 pub fn parse_cipai(file_path: &str) -> Result<Vec<CiPai>> {
     let mut file = File::open(file_path)?;
@@ -53,7 +53,7 @@ fn get_combined_text(node: roxmltree::Node) -> String {
     text.trim().into()
 }
 
-fn parse_meter(meter: &str) -> Result<Vec<Vec<ToneType>>> {
+fn parse_meter(meter: &str) -> Result<Vec<Vec<MeterTone>>> {
     let delimiters = vec!['。',  '，',  '、', '\n'];
     let mut meter_str = meter
         // 忽略对偶句
@@ -84,7 +84,7 @@ fn parse_meter(meter: &str) -> Result<Vec<Vec<ToneType>>> {
     }
     let mut result = meter_str.split(|c| delimiters.contains(&c))
         .map(parse_meter_line)
-        .collect::<Result<Vec<Vec<ToneType>>>>()?;
+        .collect::<Result<Vec<Vec<MeterTone>>>>()?;
     // remove empty lines at the end
     while result.last().is_some() && result.last().unwrap().len() == 0 {
         result.pop();
@@ -92,7 +92,7 @@ fn parse_meter(meter: &str) -> Result<Vec<Vec<ToneType>>> {
     Ok(result)
 }
 
-fn parse_meter_line(line: &str) -> Result<Vec<ToneType>> {
+fn parse_meter_line(line: &str) -> Result<Vec<MeterTone>> {
     let chars: Vec<char> = line.chars().collect();
     let mut result = vec![];
     let mut i = 0;
@@ -101,35 +101,65 @@ fn parse_meter_line(line: &str) -> Result<Vec<ToneType>> {
             if i+1 < chars.len() {
                 if chars[i+1] == '％' {
                     i += 1;
-                    ToneType::PingYun
+                    MeterTone {
+                        tone: MeterToneType::Ping,
+                        rhyme_num: Some(0),
+                    }
                 } else if chars[i+1] == '＆' {
                     i += 1;
-                    ToneType::PingYun2
+                    MeterTone {
+                        tone: MeterToneType::Ping,
+                        rhyme_num: Some(1),
+                    }
                 } else {
-                    ToneType::Ping
+                    MeterTone {
+                        tone: MeterToneType::Ping,
+                        rhyme_num: None,
+                    }
                 }
             } else {
-                ToneType::Ping
+                MeterTone {
+                    tone: MeterToneType::Ping,
+                    rhyme_num: None,
+                }
             }
         } else if chars[i] == '│' || chars[i] ==  '去' {
             if i + 1 < chars.len() {
                 if chars[i+1] == '＊' {
                     i += 1;
-                    ToneType::ZeYun
+                    MeterTone {
+                        tone: MeterToneType::Ze,
+                        rhyme_num: Some(0),
+                    }
                 } else if chars[i+1] ==  '☆' {
                     i += 1;
-                    ToneType::ZeYun2
-                } else if chars[i+1] ==  '★' { // TODO: 定风波换3次韵
+                    MeterTone {
+                        tone: MeterToneType::Ze,
+                        rhyme_num: Some(1),
+                    }
+                } else if chars[i+1] ==  '★' {
                     i += 1;
-                    ToneType::Ze
+                    MeterTone {
+                        tone: MeterToneType::Ze,
+                        rhyme_num: Some(2),
+                    }
                 } else {
-                    ToneType::Ze
+                    MeterTone {
+                        tone: MeterToneType::Ze,
+                        rhyme_num: None,
+                    }
                 }
             } else {
-                ToneType::Ze
+                MeterTone {
+                    tone: MeterToneType::Ze,
+                    rhyme_num: None,
+                }
             }
         } else if chars[i] == '＋' {
-            ToneType::Zhong
+            MeterTone {
+                tone: MeterToneType::Zhong,
+                rhyme_num: None,
+            }
         } else {
             bail!("unexpected char in meter: \"{}\", whole sentence: {}", chars[i], line);
         };

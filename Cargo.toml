@@ -10,3 +10,4 @@ serde_json = { version = "1.0", features = ["preserve_order"] }
 roxmltree = "0.21.1"
 clap = { version = "4.5.47", features = ["derive"] }
 colored = "3.0.0"
+palette="0.7.6"
