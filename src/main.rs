@@ -138,7 +138,13 @@ fn query_cipai(file: &str, name: &str, variant: Option<&String>) -> Result<()> {
         return Ok(());
     }
 
-    println!("{}\n", get_tone_legend());
+    let max_rhyme_num = matching_cipai
+        .iter()
+        .map(|cipai| cipai.get_max_rhyme_num())
+        .max()
+        .unwrap_or(0);
+
+    println!("{}\n", get_tone_legend(max_rhyme_num));
 
     for (i, cipai) in matching_cipai.iter().enumerate() {
         if i > 0 {
@@ -163,11 +169,13 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     if cipai.is_none() {
         bail!("未找到词牌: {}, {}", name, variant);
     }
-    let meter_vec: Vec<Arc<[MeterTone]>> = cipai.as_ref().unwrap().meter.iter()
+    let cipai = cipai.unwrap();
+    let meter_vec: Vec<Arc<[MeterTone]>> = cipai.meter.iter()
         .cloned()
         .map(Into::into)
         .collect();
-    println!("{}", get_tone_legend());
+    let max_rhyme_num = cipai.get_max_rhyme_num();
+    println!("{}", get_tone_legend(max_rhyme_num));
     println!("{}\n", get_match_legend());
     let result = match_meter(rhyme_dict, text, &meter_vec);
     println!("{}", result);

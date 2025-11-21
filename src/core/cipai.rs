@@ -11,6 +11,17 @@ pub struct CiPai {
     pub meter: Vec<Vec<MeterTone>>,
 }
 
+impl CiPai {
+    pub fn get_max_rhyme_num(&self) -> i32 {
+        self.meter
+            .iter()
+            .flat_map(|line| line.iter())
+            .filter_map(|tone| tone.rhyme_num)
+            .max()
+            .unwrap_or(0)
+    }
+}
+
 impl Display for CiPai {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "词牌名：{}", self.names[0])?;

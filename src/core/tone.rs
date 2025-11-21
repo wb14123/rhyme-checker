@@ -101,15 +101,22 @@ pub fn tone_match(t1: &BasicTone, t2: &MeterTone) -> bool {
 }
 
 /// 获取格律颜色说明
-pub fn get_tone_legend() -> String {
+pub fn get_tone_legend(max_rhyme_num: i32) -> String {
     if SHOULD_COLORIZE.should_colorize() {
-        format!(
-            "格律说明：平=平声 仄=仄声 中=平仄皆可 {}=平韵 {}=仄韵 {}=换韵后平韵 {}=换韵后仄韵",
-            "平(红色)".red(),
-            "仄(蓝色)".blue(),
-            "平(橙色)".truecolor(255, 165, 0),
-            "仄(绿色)".green()
-        )
+        let mut legend = "格律说明：平=平声 仄=仄声 中=平仄皆可".to_string();
+
+        if max_rhyme_num >= 0 {
+            legend.push_str("。韵脚使用不同颜色表示：");
+            let rhyme_parts: Vec<String> = (0..=max_rhyme_num)
+                .map(|n| {
+                    let color = get_contrasting_color(n as usize);
+                    format!("{}", format!("韵{}", n).truecolor(color.0, color.1, color.2))
+                })
+                .collect();
+            legend.push_str(&rhyme_parts.join("，"));
+        }
+
+        legend
     } else {
         "格律说明：如是韵脚，括号内标注声部".to_string()
     }
