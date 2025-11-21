@@ -108,7 +108,6 @@ struct MeterMatchState {
 pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[MeterTone]>]) -> MeterMatchResult {
     let text = parse_input_text(input_text);
     let possible_rhymes = get_possible_rhymes(rhyme_dict, &text, meter);
-    println!("{:?}", possible_rhymes);
     let mut meter_rhymes = HashSet::new();
     for meter_line in meter {
         let tone = meter_line.last();
@@ -122,6 +121,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
     let meter_len = meter.len();
     let meter_match_len = meter_len * 2 + 1;
     let rhymes_len = possible_rhymes.len();
+    println!("rhyme len: {}", rhymes_len);
 
     let mut state: Vec<Vec<Vec<Option<MeterMatchState>>>> =
         vec![vec![vec![None; rhymes_len]; meter_match_len]; text_len];
@@ -204,6 +204,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
             }
         }
     }
+    println!("{:?}", possible_rhymes[max_match_idx.unwrap().2]);
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
     let non_empty_meter_len = meter.iter().filter(|m| m.len() > 0).count();
     result.score = result.score / max(text_len, non_empty_meter_len) as f64;
@@ -325,107 +326,113 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &
             }
         }
     }
-    let ping: Vec<_> = ping_set.into_iter().collect();
-    let ze: Vec<_> = ze_set.into_iter().collect();
     let mut meter_tone_set = HashSet::new();
     for meter_line in meter {
         for meter_tone in meter_line.iter() {
             if meter_tone.rhyme_num.is_some() {
-                meter_tone_set.insert(meter_tone.clone());
+                meter_tone_set.insert(meter_tone);
             }
         }
     }
-    println!("{:?}", meter_tone_set);
-    get_possible_rhyme_combines(ping, ze, &meter_tone_set)
-}
 
-fn get_possible_rhyme_combines(ping_rhymes: Vec<Arc<Rhyme>>, ze_rhymes: Vec<Arc<Rhyme>>,
-                               meter_tones_set: &HashSet<MeterTone>) -> Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>> {
+    let mut results = Vec::new();
+    let meter_tones: Vec<MeterTone> = meter_tone_set.into_iter().cloned().collect();
 
-    #[derive(Debug)]
-    struct State {
-        pub ping_idx: usize,
-        pub ze_idx: usize,
-        pub meter_idx: usize,
-        pub rhyme: Option<Arc<Rhyme>>,
-        pub prev: Option<Arc<State>>,
+    if meter_tones.is_empty() {
+        return vec![HashMap::new()];
     }
 
-    let mut result = vec![];
-    let mut states = vec![State{
-        ping_idx: 0, ze_idx: 0, meter_idx: 0, rhyme: None, prev: None}];
+    let mut current = HashMap::new();
+    let mut rhyme_num_groups: HashMap<i32, Option<String>> = HashMap::new();
 
-    let meter_tones: Vec<MeterTone> = meter_tones_set.iter().map(|x| x.clone()).collect();
-    while !states.is_empty() {
-        let state = Arc::new(states.pop().unwrap());
-        if state.meter_idx >= meter_tones.len() {
-            let mut backtrace = HashMap::new();
-            let mut backtrace_state = Some(state);
-            let mut last_meter_idx = 0;
-            while backtrace_state.is_some()  {
-                let s = backtrace_state.as_ref().unwrap();
-                if s.meter_idx > 0 && s.meter_idx != last_meter_idx {
-                    backtrace.insert(meter_tones[s.meter_idx-1].clone(), s.rhyme.clone());
-                    last_meter_idx = s.meter_idx;
-                }
-                backtrace_state = s.prev.clone();
-            }
-            result.push(backtrace);
+    dfs_rhyme_combines(
+        &meter_tones,
+        0,
+        &mut current,
+        &mut rhyme_num_groups,
+        &mut ping_set,
+        &mut ze_set,
+        &mut results,
+    );
+
+    results
+}
+
+/// DFS to explore all valid rhyme combinations
+fn dfs_rhyme_combines(
+    meter_tones: &[MeterTone],
+    index: usize,
+    current: &mut HashMap<MeterTone, Option<Arc<Rhyme>>>,
+    rhyme_num_groups: &mut HashMap<i32, Option<String>>,
+    ping_rhymes: &mut HashSet<Arc<Rhyme>>,
+    ze_rhymes: &mut HashSet<Arc<Rhyme>>,
+    results: &mut Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>>,
+) {
+    // Base case: all meter_tones have been assigned
+    if index == meter_tones.len() {
+        results.push(current.clone());
+        return;
+    }
+
+    let meter_tone = &meter_tones[index];
+
+    // Option 1: Assign None to this meter_tone
+    current.insert(meter_tone.clone(), None);
+    dfs_rhyme_combines(
+        meter_tones,
+        index + 1,
+        current,
+        rhyme_num_groups,
+        ping_rhymes,
+        ze_rhymes,
+        results,
+    );
+    current.remove(meter_tone);
+
+    // Option 2: Assign a rhyme to this meter_tone
+    // Clone the set so we can modify the original during iteration
+    let available_rhymes = match meter_tone.tone {
+        MeterToneType::Ping => ping_rhymes.clone(),
+        MeterToneType::Ze => ze_rhymes.clone(),
+        MeterToneType::Zhong => panic!("MeterToneType::Zhong should not appear in meter patterns"),
+    };
+
+    for rhyme in available_rhymes {
+        let rhyme_group = rhyme.group.clone();
+
+        // Validate: if this meter_tone has a rhyme_num with an existing group, they must match
+        let rhyme_num = meter_tone.rhyme_num.unwrap();
+        if !rhyme_num_groups.contains_key(&rhyme_num) {
+            rhyme_num_groups.insert(rhyme_num, rhyme_group.clone());
+        }
+        if rhyme_num_groups.get(&rhyme_num).unwrap() != &rhyme_group {
             continue;
         }
-        // TODO: check if ping ze in different group
-        if state.ping_idx < ping_rhymes.len() && meter_tones[state.meter_idx].tone == MeterToneType::Ping {
-            // put current ping rhyme into the meter position
-            states.push(State {
-                ping_idx: state.ping_idx + 1,
-                ze_idx: state.ze_idx,
-                meter_idx: state.meter_idx + 1,
-                rhyme: Some(ping_rhymes[state.ping_idx].clone()),
-                prev: Some(state.clone()),
-            });
-            // skip current ping rhyme and try next
-            states.push(State {
-                ping_idx: state.ping_idx + 1,
-                ze_idx: state.ze_idx,
-                meter_idx: state.meter_idx,
-                rhyme: None,
-                prev: Some(state.clone()),
-            });
-        }
-        if state.ze_idx < ze_rhymes.len() && meter_tones[state.meter_idx].tone == MeterToneType::Ze {
-            // put current ze rhyme into the meter position
-            states.push(State {
-                ping_idx: state.ping_idx,
-                ze_idx: state.ze_idx + 1,
-                meter_idx: state.meter_idx + 1,
-                rhyme: Some(ze_rhymes[state.ze_idx].clone()),
-                prev: Some(state.clone()),
-            });
-            // skip current ze rhyme and try next
-            states.push(State {
-                ping_idx: state.ping_idx,
-                ze_idx: state.ze_idx + 1,
-                meter_idx: state.meter_idx,
-                rhyme: None,
-                prev: Some(state.clone())
-            })
-        }
-        // put empty rhyme to the current meter
-        states.push(State {
-            ping_idx: state.ping_idx,
-            ze_idx: state.ze_idx,
-            meter_idx: state.meter_idx + 1,
-            rhyme: None,
-            prev: Some(state.clone()),
-        })
-    }
+        current.insert(meter_tone.clone(), Some(rhyme.clone()));
 
-    result
-}
+        // Remove rhyme from the appropriate set
+        let from_ping = ping_rhymes.remove(&rhyme);
+        if !from_ping {
+            ze_rhymes.remove(&rhyme);
+        }
 
-fn rhyme_in_different_groups(r1: &Option<Arc<Rhyme>>, r2: &Option<Arc<Rhyme>>) -> bool {
-    if r1.is_none() || r2.is_none() {
-        return false;
+        dfs_rhyme_combines(
+            meter_tones,
+            index + 1,
+            current,
+            rhyme_num_groups,
+            ping_rhymes,
+            ze_rhymes,
+            results,
+        );
+
+        // clean up state after recursive call
+        if from_ping {
+            ping_rhymes.insert(rhyme.clone());
+        } else {
+            ze_rhymes.insert(rhyme.clone());
+        }
+        rhyme_num_groups.remove(&rhyme_num);
+        current.remove(meter_tone);
     }
-    r1.as_ref().unwrap().group != r2.as_ref().unwrap().group
 }
