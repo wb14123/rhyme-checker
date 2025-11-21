@@ -410,13 +410,15 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &
     let mut current = HashMap::new();
     let mut rhyme_num_groups: HashMap<i32, Option<String>> = HashMap::new();
 
+    let mut used_rhymes = HashSet::new();
     dfs_rhyme_combines(
         &meter_tones,
         0,
         &mut current,
         &mut rhyme_num_groups,
-        &mut ping_set,
-        &mut ze_set,
+        &ping_set,
+        &ze_set,
+        &mut used_rhymes,
         &mut results,
     );
 
@@ -429,8 +431,9 @@ fn dfs_rhyme_combines(
     index: usize,
     current: &mut HashMap<MeterTone, Option<Arc<Rhyme>>>,
     rhyme_num_groups: &mut HashMap<i32, Option<String>>,
-    ping_rhymes: &mut HashSet<Arc<Rhyme>>,
-    ze_rhymes: &mut HashSet<Arc<Rhyme>>,
+    ping_rhymes: &HashSet<Arc<Rhyme>>,
+    ze_rhymes: &HashSet<Arc<Rhyme>>,
+    used_rhymes: &mut HashSet<Arc<Rhyme>>,
     results: &mut Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>>,
 ) {
     // Base case: all meter_tones have been assigned
@@ -450,19 +453,24 @@ fn dfs_rhyme_combines(
         rhyme_num_groups,
         ping_rhymes,
         ze_rhymes,
+        used_rhymes,
         results,
     );
     current.remove(meter_tone);
 
     // Option 2: Assign a rhyme to this meter_tone
-    // Clone the set so we can modify the original during iteration
     let available_rhymes = match meter_tone.tone {
-        MeterToneType::Ping => ping_rhymes.clone(),
-        MeterToneType::Ze => ze_rhymes.clone(),
+        MeterToneType::Ping => ping_rhymes,
+        MeterToneType::Ze => ze_rhymes,
         MeterToneType::Zhong => panic!("MeterToneType::Zhong should not appear in meter patterns"),
     };
 
     for rhyme in available_rhymes {
+        // Skip if rhyme is already used
+        if used_rhymes.contains(rhyme) {
+            continue;
+        }
+
         let rhyme_group = rhyme.group.clone();
 
         // Validate: if this meter_tone has a rhyme_num with an existing group, they must match
@@ -475,11 +483,8 @@ fn dfs_rhyme_combines(
         }
         current.insert(meter_tone.clone(), Some(rhyme.clone()));
 
-        // Remove rhyme from the appropriate set
-        let from_ping = ping_rhymes.remove(&rhyme);
-        if !from_ping {
-            ze_rhymes.remove(&rhyme);
-        }
+        // Mark rhyme as used
+        used_rhymes.insert(rhyme.clone());
 
         dfs_rhyme_combines(
             meter_tones,
@@ -488,15 +493,12 @@ fn dfs_rhyme_combines(
             rhyme_num_groups,
             ping_rhymes,
             ze_rhymes,
+            used_rhymes,
             results,
         );
 
         // clean up state after recursive call
-        if from_ping {
-            ping_rhymes.insert(rhyme.clone());
-        } else {
-            ze_rhymes.insert(rhyme.clone());
-        }
+        used_rhymes.remove(rhyme);
         rhyme_num_groups.remove(&rhyme_num);
         current.remove(meter_tone);
     }
