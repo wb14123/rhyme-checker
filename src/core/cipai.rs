@@ -59,7 +59,10 @@ pub struct CiPaiMatchResult<'a> {
 
 impl Display for CiPaiMatchResult<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "{}", self.cipai)?;
+        writeln!(f, "词牌名：{}", self.cipai.names[0])?;
+        if self.cipai.names.len() > 1 {
+            writeln!(f, "别名：{}", self.cipai.names[1..].join("、"))?;
+        }
         write!(f, "{}", self.match_result)
     }
 }
