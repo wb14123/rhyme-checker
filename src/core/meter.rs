@@ -121,7 +121,6 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
     let meter_len = meter.len();
     let meter_match_len = meter_len * 2 + 1;
     let rhymes_len = possible_rhymes.len();
-    println!("rhyme len: {}", rhymes_len);
 
     let mut state: Vec<Vec<Vec<Option<MeterMatchState>>>> =
         vec![vec![vec![None; rhymes_len]; meter_match_len]; text_len];
@@ -204,7 +203,6 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
             }
         }
     }
-    println!("{:?}", possible_rhymes[max_match_idx.unwrap().2]);
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
     let non_empty_meter_len = meter.iter().filter(|m| m.len() > 0).count();
     result.score = result.score / max(text_len, non_empty_meter_len) as f64;
