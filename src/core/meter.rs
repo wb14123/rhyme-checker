@@ -2,7 +2,7 @@ use crate::core::rhyme::{Rhyme, RhymeDict};
 use crate::core::tone::{tone_match, BasicTone, MeterTone, MeterToneType};
 use colored::control::SHOULD_COLORIZE;
 use colored::Colorize;
-use std::cmp::max;
+use std::cmp::{max, Ordering};
 use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::ops::Deref;
@@ -86,6 +86,32 @@ pub struct MeterMatchResult {
     pub result: Vec<SentenceMatchResult>,
 }
 
+impl MeterMatchResult {
+    /// Count empty text lines between the first and last non-empty text lines
+    fn count_empty_text_lines(&self) -> usize {
+        let first_text_idx = self.result.iter().position(|r| r.text.is_some());
+        let last_text_idx = self.result.iter().rposition(|r| r.text.is_some());
+
+        if first_text_idx.is_none() || last_text_idx.is_none() {
+            return 0;
+        }
+
+        let first = first_text_idx.unwrap();
+        let last = last_text_idx.unwrap();
+
+        // Count entries with no text between first and last
+        self.result[first..=last]
+            .iter()
+            .filter(|r| r.text.is_none())
+            .count()
+    }
+
+    /// Count total meter lines
+    fn count_meter_lines(&self) -> usize {
+        self.result.iter().filter(|r| r.meter.is_some()).count()
+    }
+}
+
 impl Display for MeterMatchResult {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "匹配分数：{}", self.score)?;
@@ -93,6 +119,42 @@ impl Display for MeterMatchResult {
             write!(f, "{}", r)?;
         }
         Ok(())
+    }
+}
+
+impl PartialEq for MeterMatchResult {
+    fn eq(&self, other: &Self) -> bool {
+        // For equality, all comparison criteria must be equal
+        (self.score - other.score).abs() < f64::EPSILON
+            && self.count_empty_text_lines() == other.count_empty_text_lines()
+            && self.count_meter_lines() == other.count_meter_lines()
+    }
+}
+
+impl Eq for MeterMatchResult {}
+
+impl PartialOrd for MeterMatchResult {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for MeterMatchResult {
+    fn cmp(&self, other: &Self) -> Ordering {
+        // 1. Compare score first (higher score is better, so reversed)
+        match other.score.partial_cmp(&self.score) {
+            Some(Ordering::Equal) | None => {
+                // 2. Less empty text lines is better
+                match self.count_empty_text_lines().cmp(&other.count_empty_text_lines()) {
+                    Ordering::Equal => {
+                        // 3. Less meter lines is better
+                        self.count_meter_lines().cmp(&other.count_meter_lines())
+                    }
+                    ordering => ordering,
+                }
+            }
+            Some(ordering) => ordering,
+        }
     }
 }
 
@@ -105,7 +167,8 @@ struct MeterMatchState {
     prev_idx: Option<(usize, usize, usize)>,
 }
 
-pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[MeterTone]>]) -> MeterMatchResult {
+pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[MeterTone]>],
+                   for_searching: bool) -> MeterMatchResult {
     let text = parse_input_text(input_text);
     let possible_rhymes = get_possible_rhymes(rhyme_dict, &text, meter);
     let mut meter_rhymes = HashSet::new();
@@ -205,7 +268,11 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
     }
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
     let non_empty_meter_len = meter.iter().filter(|m| m.len() > 0).count();
-    result.score = result.score / max(text_len, non_empty_meter_len) as f64;
+    if for_searching {
+        result.score = result.score / text_len as f64;
+    } else {
+        result.score = result.score / max(text_len, non_empty_meter_len) as f64
+    }
     result
 }
 

@@ -188,7 +188,7 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     let max_rhyme_num = cipai.get_max_rhyme_num();
     println!("{}", get_tone_legend(max_rhyme_num));
     println!("{}\n", get_match_legend());
-    let result = match_meter(rhyme_dict, text, &meter_vec);
+    let result = match_meter(rhyme_dict, text, &meter_vec, false);
     println!("{}", result);
     Ok(())
 }

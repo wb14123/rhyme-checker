@@ -83,7 +83,7 @@ pub fn best_match<'a>(
                 .map(|line| std::sync::Arc::from(line.as_slice()))
                 .collect();
 
-            let match_result = match_meter(rhyme_dict, input_text, &meter);
+            let match_result = match_meter(rhyme_dict, input_text, &meter, true);
 
             CiPaiMatchResult {
                 cipai,
@@ -92,10 +92,9 @@ pub fn best_match<'a>(
         })
         .collect();
 
-    // Sort by score in descending order (highest scores first)
     results.sort_by(|a, b| {
-        b.match_result.score
-            .partial_cmp(&a.match_result.score)
+        a.match_result
+            .partial_cmp(&b.match_result)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
 
