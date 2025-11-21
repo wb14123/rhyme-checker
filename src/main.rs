@@ -6,6 +6,7 @@ use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
 use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
+use crate::core::cipai::best_match;
 use crate::core::meter::{get_match_legend, match_meter};
 use crate::core::rhyme::RhymeDict;
 use crate::core::tone::{MeterTone, get_tone_legend};
@@ -74,6 +75,16 @@ enum Commands {
         /// 格律变种，如定格、格一等
         #[arg(short, long)]
         variant: String,
+
+        #[arg(value_name = "TEXT")]
+        text: String,
+    },
+
+    /// 查找最匹配的词牌格律
+    SearchCiPai {
+        /// 要显示的最佳匹配结果数量
+        #[arg(short = 'n', long, default_value = "5")]
+        top: usize,
 
         #[arg(value_name = "TEXT")]
         text: String,
@@ -182,6 +193,38 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     Ok(())
 }
 
+fn best_match_cipai(rhyme_dict: &RhymeDict, file: &str, top: usize, text: &str) -> Result<()> {
+    let cipai_list = parse_cipai(file)?;
+
+    if cipai_list.is_empty() {
+        bail!("未找到任何词牌");
+    }
+
+    let results = best_match(&cipai_list, rhyme_dict, text);
+
+    let max_rhyme_num = cipai_list
+        .iter()
+        .map(|cipai| cipai.get_max_rhyme_num())
+        .max()
+        .unwrap_or(0);
+
+    println!("{}", get_tone_legend(max_rhyme_num));
+    println!("{}\n", get_match_legend());
+
+    let display_count = top.min(results.len());
+    println!("显示前 {} 个最佳匹配结果:\n", display_count);
+
+    for (i, result) in results.iter().take(display_count).enumerate() {
+        if i > 0 {
+            println!("\n{}", "=".repeat(60));
+        }
+        println!("排名 #{}", i + 1);
+        println!("{}", result);
+    }
+
+    Ok(())
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
 
@@ -204,6 +247,8 @@ fn main() -> Result<()> {
             query_cipai(cipai_file.as_str(), ci_pai, variant.as_ref())?,
         Commands::MatchCiPai {ci_pai, variant, text} =>
             match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text)?,
+        Commands::SearchCiPai { top, text } =>
+            best_match_cipai(&rhyme_dict, cipai_file.as_str(), *top, text)?,
     }
 
     Ok(())

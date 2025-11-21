@@ -188,7 +188,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
     }
 
     // get the max score for the last text line
-    let mut max_score = 1.0;
+    let mut max_score = 0.0;
     let mut max_match_idx = None;
     for meter_i in 0..meter_match_len {
         for rhyme_i in 0..rhymes_len {
@@ -337,7 +337,7 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &
     let meter_tones: Vec<MeterTone> = meter_tone_set.into_iter().cloned().collect();
 
     if meter_tones.is_empty() {
-        return vec![HashMap::new()];
+        return vec![];
     }
 
     let mut current = HashMap::new();

@@ -1,6 +1,8 @@
 use std::fmt::{Display, Formatter};
 use serde::{Deserialize, Serialize};
 use crate::core::tone::MeterTone;
+use crate::core::meter::{match_meter, MeterMatchResult};
+use crate::core::rhyme::RhymeDict;
 
 // 词牌
 #[derive(Serialize, Deserialize)]
@@ -48,5 +50,55 @@ impl Display for CiPai {
 
         Ok(())
     }
+}
+
+pub struct CiPaiMatchResult<'a> {
+    pub cipai: &'a CiPai,
+    pub match_result: MeterMatchResult,
+}
+
+impl Display for CiPaiMatchResult<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}", self.cipai)?;
+        write!(f, "{}", self.match_result)
+    }
+}
+
+/// Find the best matching CiPai from a list of candidates
+///
+/// Takes a vector of CiPai, a rhyme dictionary, and input text.
+/// Returns a vector of CiPaiMatchResult sorted by score in descending order.
+pub fn best_match<'a>(
+    cipais: &'a [CiPai],
+    rhyme_dict: &RhymeDict,
+    input_text: &str,
+) -> Vec<CiPaiMatchResult<'a>> {
+    let mut results: Vec<CiPaiMatchResult> = cipais
+        .iter()
+        .map(|cipai| {
+            // Convert Vec<Vec<MeterTone>> to Vec<Arc<[MeterTone]>>
+            let meter: Vec<std::sync::Arc<[MeterTone]>> = cipai
+                .meter
+                .iter()
+                .map(|line| std::sync::Arc::from(line.as_slice()))
+                .collect();
+
+            let match_result = match_meter(rhyme_dict, input_text, &meter);
+
+            CiPaiMatchResult {
+                cipai,
+                match_result,
+            }
+        })
+        .collect();
+
+    // Sort by score in descending order (highest scores first)
+    results.sort_by(|a, b| {
+        b.match_result.score
+            .partial_cmp(&a.match_result.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+
+    results
 }
 
