@@ -5,13 +5,15 @@
 ## 功能
 
 * 查询单字韵律。
-* 查询词牌韵律。
+* 查询词牌格律。
 * 根据指定词牌检测文字是否符合格律。
 * 根据文字搜索最匹配的词牌。
 * 支持多种韵书：平水韵，词林正韵，中华新韵。
 * 集成 Claude Skills
 
 ## Build
+
+[安装 Rust 工具链](https://rust-lang.org/tools/install/) 。
 
 ```
 cargo build
