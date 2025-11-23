@@ -170,6 +170,14 @@ struct MeterMatchState {
 pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[MeterTone]>],
                    for_searching: bool) -> MeterMatchResult {
     let text = parse_input_text(input_text);
+    let text_len = text.len();
+    if text_len == 0 {
+        return MeterMatchResult {
+            score: 0.0,
+            result: vec![],
+        };
+    }
+
     let possible_rhymes = get_possible_rhymes(rhyme_dict, &text, meter);
     let mut meter_rhymes = HashSet::new();
     for meter_line in meter {
@@ -180,7 +188,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
         meter_rhymes.insert(tone.unwrap());
     }
 
-    let text_len = text.len();
+
     let meter_len = meter.len();
     let meter_match_len = meter_len * 2 + 1;
     let rhymes_len = possible_rhymes.len();
