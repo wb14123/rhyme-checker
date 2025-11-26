@@ -111,6 +111,12 @@ fn parse_meter_line(line: &str) -> Result<Vec<MeterTone>> {
                         tone: MeterToneType::Ping,
                         rhyme_num: Some(1),
                     }
+                } else if chars[i+1] >= 'a' && chars[i+1] <= 'z' {
+                    i += 1;
+                    MeterTone {
+                        tone: MeterToneType::Ping,
+                        rhyme_num: Some((chars[i] as i32)-('a' as i32)+1),
+                    }
                 } else {
                     MeterTone {
                         tone: MeterToneType::Ping,
@@ -142,6 +148,12 @@ fn parse_meter_line(line: &str) -> Result<Vec<MeterTone>> {
                     MeterTone {
                         tone: MeterToneType::Ze,
                         rhyme_num: Some(2),
+                    }
+                } else if chars[i+1] >= 'a' && chars[i+1] <= 'z' {
+                    i += 1;
+                    MeterTone {
+                        tone: MeterToneType::Ze,
+                        rhyme_num: Some((chars[i] as i32)-('a' as i32)+1),
                     }
                 } else {
                     MeterTone {

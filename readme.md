@@ -68,7 +68,3 @@ cargo build
 却喜炉边围酒暖，休叹，梅花消息待春来。
 ```
 
-
-## 已知问题
-
-目前使用的格律文件有些错误，详见[此处](https://github.com/wmjordan/longyusheng.org/issues/4)。
