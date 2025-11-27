@@ -65,12 +65,12 @@ impl fmt::Display for MeterTone {
 
 pub fn get_contrasting_color(n: usize) -> (u8, u8, u8) {
     // Use golden ratio conjugate for optimal hue distribution
-    let golden_ratio_conjugate = 0.618033988749895;
+    let golden_ratio_conjugate = 0.618_034;
     let hue = (n as f32 * golden_ratio_conjugate) % 1.0;
 
     // Alternate saturation and lightness for better distinction
-    let saturation = if n % 3 == 0 { 0.9 } else if n % 3 == 1 { 1.0 } else { 0.8 };
-    let lightness = if n % 2 == 0 { 0.5 } else { 0.65 };
+    let saturation = if n.is_multiple_of(3) { 0.9 } else if n % 3 == 1 { 1.0 } else { 0.8 };
+    let lightness = if n.is_multiple_of(2) { 0.5 } else { 0.65 };
 
     let hsl = Hsl::new(hue * 360.0, saturation, lightness);
     let rgb: Srgb = Srgb::from_color(hsl);

@@ -123,7 +123,7 @@ fn query_char_rhyme(rhyme_dict: &RhymeDict, character: &str, show_all: bool) -> 
                     print!(" ");
                 }
             }
-            if chars.len() % 20 != 0 {
+            if !chars.len().is_multiple_of(20) {
                 println!();
             }
         }

@@ -36,7 +36,7 @@ pub fn parse_cipai(file_path: &str) -> Result<Vec<CiPai>> {
             if result.is_err() {
                 eprintln!("Error to parse CiPai xml: {:?}", result.as_ref().err().unwrap())
             }
-            result.unwrap_or(vec![])
+            result.unwrap_or_default()
         })
         .collect();
     Ok(result)
@@ -86,7 +86,7 @@ fn parse_meter(meter: &str) -> Result<Vec<Vec<MeterTone>>> {
         .map(parse_meter_line)
         .collect::<Result<Vec<Vec<MeterTone>>>>()?;
     // remove empty lines at the end
-    while result.last().is_some() && result.last().unwrap().len() == 0 {
+    while result.last().is_some() && result.last().unwrap().is_empty() {
         result.pop();
     }
     Ok(result)

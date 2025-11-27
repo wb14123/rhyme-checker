@@ -53,10 +53,9 @@ impl RhymeDict {
 
         let mut chars_to_rhymes = HashMap::new();
 
-        for rid in 0..rhyme_chars.len() {
-            let chars = &rhyme_chars[rid];
+        for (rid, chars) in rhyme_chars.iter().enumerate() {
             for char in chars {
-                if chars_to_rhymes.get(char).is_none() {
+                if !chars_to_rhymes.contains_key(char) {
                     chars_to_rhymes.insert(*char, vec![]);
                 }
                 chars_to_rhymes.get_mut(char).unwrap().push(
@@ -72,14 +71,14 @@ impl RhymeDict {
 
     pub fn get_chars_by_rhyme(&self, id: &RhymeId) -> &[char] {
         self.rhyme_to_chars
-            .get(&id)
+            .get(id)
             .map(|v| v.as_slice())
             .unwrap_or(&[])
     }
 
     pub fn get_rhymes_by_char(&self, c: &char) -> &[Arc<Rhyme>] {
         self.chars_to_rhymes
-            .get(&c)
+            .get(c)
             .map(|v| v.as_slice())
             .unwrap_or(&[])
     }

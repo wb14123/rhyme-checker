@@ -43,7 +43,7 @@ impl Display for SentenceMatchResult {
             for (i, char) in self.text.as_ref().unwrap().chars().enumerate() {
                 let char_str = char.to_string();
                 if SHOULD_COLORIZE.should_colorize() {
-                    let colored_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
+                    let colored_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().is_empty() {
                         char_str.truecolor(180, 180, 180)
                     } else {
                         match self.match_result.as_ref().unwrap()[i] {
@@ -55,7 +55,7 @@ impl Display for SentenceMatchResult {
                     };
                     write!(f, "{}", colored_char)?;
                 } else {
-                    let anno_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().len() == 0 {
+                    let anno_char = if self.match_result.is_none() || self.match_result.as_ref().unwrap().is_empty() {
                         char_str
                     } else {
                         match self.match_result.as_ref().unwrap()[i] {
@@ -67,14 +67,14 @@ impl Display for SentenceMatchResult {
                     write!(f, "{}", anno_char)?;
                 }
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
         if self.meter.is_some() {
             write!(f, "--- ")?;
             for tone in self.meter.as_ref().unwrap().as_ref() {
                 write!(f, "{}", tone)?;
             }
-            writeln!(f, "")?;
+            writeln!(f)?;
         }
         Ok(())
     }
@@ -199,30 +199,30 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
     for text_i in 0..text_len {
         for meter_i in 0..meter_match_len {
             for rhyme_i in 0..rhymes_len {
-                let meter_line = if meter_i % 2 == 0 {
+                let meter_line = if meter_i.is_multiple_of(2) {
                     None
                 } else {
                     Some(meter[meter_i / 2].clone())
                 };
                 let (cur_score, cur_match) =
-                    if meter_line.is_none() {
-                        // This sentence is put between/before/after the rules
-                        (0.0, vec![])
-                    } else {
+                    if let Some(ref meter_line_val) = meter_line {
                         let (score, result) = match_sentence(
                             rhyme_dict,
-                            &*text[text_i],
-                            &*meter_line.unwrap(),
+                            &text[text_i],
+                            meter_line_val,
                             &possible_rhymes[rhyme_i],
                         );
                         (score, result)
+                    } else {
+                        // This sentence is put between/before/after the rules
+                        (0.0, vec![])
                     };
                 let mut last_max_match_idx = None;
                 let mut last_max_score = 0.0;
                 if text_i > 0 {
                     let pre_text_i = text_i - 1;
 
-                    let prev_meter_i_end = if meter_i % 2 == 0 {
+                    let prev_meter_i_end = if meter_i.is_multiple_of(2) {
                         /* If the current sentence is put between the rules, the last sentence
                         can be put at the same position since there can be multiple sentences
                         in the gap.
@@ -235,6 +235,7 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
                         meter_i - 1
                     };
                     // +1 for exclusive boundary
+                    #[allow(clippy::needless_range_loop)]
                     for prev_meter_i in 0..(prev_meter_i_end + 1) {
                         // There must be a state for previous sentence, if not, there is a bug
                         let last_match_score =
@@ -275,11 +276,11 @@ pub fn match_meter(rhyme_dict: &RhymeDict, input_text: &str, meter: &[Arc<[Meter
         }
     }
     let mut result = build_result_form_match_state(state, max_match_idx.unwrap(), meter);
-    let non_empty_meter_len = meter.iter().filter(|m| m.len() > 0).count();
+    let non_empty_meter_len = meter.iter().filter(|m| !m.is_empty()).count();
     if for_searching {
-        result.score = result.score / text_len as f64;
+        result.score /= text_len as f64;
     } else {
-        result.score = result.score / max(text_len, non_empty_meter_len) as f64
+        result.score /= max(text_len, non_empty_meter_len) as f64
     }
     result
 }
@@ -289,7 +290,7 @@ fn parse_input_text(text: &str) -> Vec<Arc<String>> {
     text
         .split(|c| delimiters.contains(&c))
         .map(|l| Arc::new(l.trim().to_string()))
-        .filter(|l| l.len() > 0)
+        .filter(|l| !l.is_empty())
         .collect()
 }
 
@@ -310,7 +311,7 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[MeterTone],
         }
         let rhymes = rhyme_dict.get_rhymes_by_char(&chars[i]);
         let tone_match = rhymes.iter()
-            .find(|r| tone_match(&r.tone, &rule[i])).is_some();
+            .any(|r| tone_match(&r.tone, &rule[i]));
         if tone_match {
             score += 0.8;
         }
@@ -324,7 +325,7 @@ fn match_sentence(rhyme_dict: &RhymeDict, sentence: &str, rule: &[MeterTone],
         } else if rhyme_match_target.is_none() {
             false
         } else {
-            rhymes.iter().find(|&r| r.deref() == rhyme_match_target.as_ref().unwrap().deref()).is_some()
+            rhymes.iter().any(|r| r.deref() == rhyme_match_target.as_ref().unwrap().deref())
         };
         if rhyme_match {
             score += 0.2;
@@ -361,7 +362,7 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Option<MeterMatchState>>>>,
             cur_meter_idx -= 1;
         }
         cur_meter_idx -= 1;
-        let meter_line = if cur_state.meter_idx % 2 == 0 {
+        let meter_line = if cur_state.meter_idx.is_multiple_of(2) {
             None
         } else {
             Some(meter[cur_state.meter_idx / 2].clone())
@@ -384,7 +385,7 @@ fn build_result_form_match_state(state: Vec<Vec<Vec<Option<MeterMatchState>>>>,
     MeterMatchResult {score, result}
 }
 
-fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &[Arc<[MeterTone]>]
+fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &[Arc<String>], meter: &[Arc<[MeterTone]>]
         ) -> Vec<HashMap<MeterTone, Option<Arc<Rhyme>>>> {
     let last_chars: Vec<char> = text.iter()
         .filter_map(|s| s.chars().last()).collect();
@@ -434,6 +435,7 @@ fn get_possible_rhymes(rhyme_dict: &RhymeDict, text: &Vec<Arc<String>>, meter: &
 }
 
 /// DFS to explore all valid rhyme combinations
+#[allow(clippy::too_many_arguments)]
 fn dfs_rhyme_combines(
     meter_tones: &[MeterTone],
     index: usize,
@@ -483,9 +485,7 @@ fn dfs_rhyme_combines(
 
         // Validate: if this meter_tone has a rhyme_num with an existing group, they must match
         let rhyme_num = meter_tone.rhyme_num.unwrap();
-        if !rhyme_num_groups.contains_key(&rhyme_num) {
-            rhyme_num_groups.insert(rhyme_num, rhyme_group.clone());
-        }
+        rhyme_num_groups.entry(rhyme_num).or_insert_with(|| rhyme_group.clone());
         if rhyme_num_groups.get(&rhyme_num).unwrap() != &rhyme_group {
             continue;
         }
