@@ -3,7 +3,6 @@ use crate::core::tone::BasicTone;
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
 use std::fs::File;
-use std::sync::Arc;
 
 pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
     let file = File::open(file_path)?;
@@ -28,7 +27,7 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
                 group: None, // 平水韵为诗韵，平仄不在统一韵部，所以设置为空
                 tone: tone.clone(),
             };
-            rhymes.push(Arc::new(rhyme));
+            rhymes.push(rhyme);
 
             // insert chars
             let raw_chars_arr =  raw_chars.as_array().context(json_format_err)?;
@@ -72,7 +71,7 @@ pub fn parse_cilin(file_path: &str) -> Result<RhymeDict> {
                 group: Some(group.clone()),
                 tone: tone.clone(),
             };
-            rhymes.push(Arc::new(rhyme));
+            rhymes.push(rhyme);
 
             // insert chars
             let raw_chars_arr = raw_chars.as_array().context(json_format_err)?;
