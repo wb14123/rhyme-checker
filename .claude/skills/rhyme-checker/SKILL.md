@@ -10,7 +10,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 ## 工具路径
 
 ```bash
-./target/debug/rhyme-checker
+./rhyme-checker
 ```
 
 ## 主要功能
@@ -21,7 +21,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 
 **用法:**
 ```bash
-./target/debug/rhyme-checker query-char-rhyme <汉字> [选项]
+rhyme-checker query-char-rhyme <汉字> [选项]
 ```
 
 **参数:**
@@ -33,10 +33,10 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 **示例:**
 ```bash
 # 查询"春"字的韵部信息
-./target/debug/rhyme-checker query-char-rhyme 春
+rhyme-checker query-char-rhyme 春
 
 # 查询"春"字并显示同韵部所有汉字
-./target/debug/rhyme-checker query-char-rhyme 春 -s
+rhyme-checker query-char-rhyme 春 -s
 ```
 
 **输出示例:**
@@ -50,7 +50,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 
 **用法:**
 ```bash
-./target/debug/rhyme-checker --no-color query-ci-pai --ci-pai <词牌名> [选项]
+rhyme-checker --no-color query-ci-pai --ci-pai <词牌名> [选项]
 ```
 
 **参数:**
@@ -62,10 +62,10 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 **示例:**
 ```bash
 # 查询"如梦令"的所有格律变种
-./target/debug/rhyme-checker --no-color query-ci-pai --ci-pai 如梦令
+rhyme-checker --no-color query-ci-pai --ci-pai 如梦令
 
 # 查询"如梦令"的"定格"变种
-./target/debug/rhyme-checker --no-color query-ci-pai --ci-pai 如梦令 --variant 定格
+rhyme-checker --no-color query-ci-pai --ci-pai 如梦令 --variant 定格
 ```
 
 **输出示例:**
@@ -90,7 +90,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 
 **用法:**
 ```bash
-./target/debug/rhyme-checker --no-color match-ci-pai --ci-pai <词牌名> --variant <变体> <文本>
+rhyme-checker --no-color match-ci-pai --ci-pai <词牌名> --variant <变体> <文本>
 ```
 
 **参数:**
@@ -100,7 +100,7 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 
 **示例:**
 ```bash
-./target/debug/rhyme-checker --no-color match-ci-pai --ci-pai 如梦令 --variant 定格 "常记溪亭日暮,沉醉不知归路。兴尽晚回舟,误入藕花深处。争渡,争渡,惊起一滩鸥鹭。"
+rhyme-checker --no-color match-ci-pai --ci-pai 如梦令 --variant 定格 "常记溪亭日暮,沉醉不知归路。兴尽晚回舟,误入藕花深处。争渡,争渡,惊起一滩鸥鹭。"
 ```
 
 ## 全局选项
@@ -116,10 +116,10 @@ description: Chinese poetry rhyme and meter analysis tool. Use this skill to que
 **使用不同韵书的示例:**
 ```bash
 # 使用词林正韵查询
-./target/debug/rhyme-checker -t cilin query-char-rhyme 春
+rhyme-checker -t cilin query-char-rhyme 春
 
 # 指定自定义数据目录
-./target/debug/rhyme-checker -d /path/to/data query-char-rhyme 春
+rhyme-checker -d /path/to/data query-char-rhyme 春
 ```
 
 ## 格律符号说明
