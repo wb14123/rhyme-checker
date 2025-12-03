@@ -4,13 +4,12 @@ mod parser;
 use std::sync::Arc;
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use parser::rhyme_parser::parse_pingshui;
-use parser::cipai_parser::parse_cipai;
-use crate::core::cipai::best_match;
+use crate::core::cipai::{best_match, CiPai};
 use crate::core::meter::{get_match_legend, match_meter};
 use crate::core::rhyme::RhymeDict;
 use crate::core::tone::{MeterTone, get_tone_legend};
-use crate::parser::rhyme_parser::parse_cilin;
+use std::fs::File;
+use std::io::Read;
 
 #[derive(Debug, Clone, ValueEnum)]
 enum DictType {
@@ -27,7 +26,7 @@ enum DictType {
 #[command(about = "查询汉字韵律信息", long_about = None)]
 struct Cli {
     /// 数据文件夹路径
-    #[arg(short, long, default_value = "data")]
+    #[arg(short, long, default_value = "data/bin")]
     data_dir: String,
 
     /// 韵书类型
@@ -40,6 +39,22 @@ struct Cli {
 
     #[command(subcommand)]
     command: Commands,
+}
+
+fn load_rhyme_dict(file_path: &str) -> Result<RhymeDict> {
+    let mut file = File::open(file_path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let rhyme_dict = bincode::serde::decode_from_slice(&buffer, bincode::config::standard())?;
+    Ok(rhyme_dict.0)
+}
+
+fn load_cipai_list(file_path: &str) -> Result<Vec<CiPai>> {
+    let mut file = File::open(file_path)?;
+    let mut buffer = Vec::new();
+    file.read_to_end(&mut buffer)?;
+    let cipai_list = bincode::serde::decode_from_slice(&buffer, bincode::config::standard())?;
+    Ok(cipai_list.0)
 }
 
 #[derive(Subcommand)]
@@ -132,8 +147,7 @@ fn query_char_rhyme(rhyme_dict: &RhymeDict, character: &str, show_all: bool) -> 
     Ok(())
 }
 
-fn query_cipai(file: &str, name: &str, variant: Option<&String>) -> Result<()> {
-    let cipai_list = parse_cipai(file)?;
+fn query_cipai(cipai_list: &[CiPai], name: &str, variant: Option<&String>) -> Result<()> {
 
     let matching_cipai: Vec<_> = cipai_list
         .iter()
@@ -168,9 +182,8 @@ fn query_cipai(file: &str, name: &str, variant: Option<&String>) -> Result<()> {
     Ok(())
 }
 
-fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, text: &str) -> Result<()> {
+fn match_cipai(rhyme_dict: &RhymeDict, cipai_list: &[CiPai], name: &str, variant: &str, text: &str) -> Result<()> {
 
-    let cipai_list = parse_cipai(file)?;
     let cipai= cipai_list
         .iter()
         .find(|cipai| cipai.names.iter().any(|n| n.contains(name))
@@ -193,9 +206,7 @@ fn match_cipai(rhyme_dict: &RhymeDict, file: &str, name: &str, variant: &str, te
     Ok(())
 }
 
-fn best_match_cipai(rhyme_dict: &RhymeDict, file: &str, top: usize, text: &str) -> Result<()> {
-    let cipai_list = parse_cipai(file)?;
-
+fn best_match_cipai(rhyme_dict: &RhymeDict, cipai_list: &[CiPai], top: usize, text: &str) -> Result<()> {
     if cipai_list.is_empty() {
         bail!("未找到任何词牌");
     }
@@ -233,22 +244,22 @@ fn main() -> Result<()> {
     }
 
     let rhyme_dict = match cli.dict_type {
-        DictType::Pingshui => parse_pingshui(format!("{}/rhyme/Pingshui_Rhyme.json", cli.data_dir).as_str())?,
-        DictType::Cilin => parse_cilin(format!("{}/rhyme/Cilin_Rhyme.json", cli.data_dir).as_str())?,
-        DictType::Xinyun => parse_cilin(format!("{}/rhyme/Xinyun_Rhyme.json", cli.data_dir).as_str())?,
+        DictType::Pingshui => load_rhyme_dict(&format!("{}/pingshui_rhyme.bin", cli.data_dir))?,
+        DictType::Cilin => load_rhyme_dict(&format!("{}/cilin_rhyme.bin", cli.data_dir))?,
+        DictType::Xinyun => load_rhyme_dict(&format!("{}/xinyun_rhyme.bin", cli.data_dir))?,
     };
 
-    let cipai_file = format!("{}/cipai/cipai.xml", cli.data_dir);
+    let cipai_list = load_cipai_list(&format!("{}/cipai.bin", cli.data_dir))?;
 
     match &cli.command {
         Commands::QueryCharRhyme { character, show_all} =>
             query_char_rhyme(&rhyme_dict, character, *show_all)?,
         Commands::QueryCiPai { ci_pai, variant } =>
-            query_cipai(cipai_file.as_str(), ci_pai, variant.as_ref())?,
+            query_cipai(&cipai_list, ci_pai, variant.as_ref())?,
         Commands::MatchCiPai {ci_pai, variant, text} =>
-            match_cipai(&rhyme_dict, cipai_file.as_str(), ci_pai, variant, text)?,
+            match_cipai(&rhyme_dict, &cipai_list, ci_pai, variant, text)?,
         Commands::SearchCiPai { top, text } =>
-            best_match_cipai(&rhyme_dict, cipai_file.as_str(), *top, text)?,
+            best_match_cipai(&rhyme_dict, &cipai_list, *top, text)?,
     }
 
     Ok(())
