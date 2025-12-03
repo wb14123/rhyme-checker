@@ -16,18 +16,18 @@
 [安装 Rust 工具链](https://rust-lang.org/tools/install/) 。
 
 ```
-cargo build
+cargo build --release
 ```
 
 生成可执行文件
 
 ```
-./target/debug/rhyme-checker
+./target/release/rhyme-checker
 ```
 
 ## 使用
 
-`./rhyme-checker --help` 查看使用方法。
+`./rhyme-checker --help` 查看使用方法。需要配合 `data/` 下的数据文件一起使用。
 
 ### 与 Claude 一起使用：
 
