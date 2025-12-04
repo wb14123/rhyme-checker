@@ -1,14 +1,9 @@
 use crate::core::cipai::CiPai;
 use anyhow::{bail, Context, Result};
-use std::fs::File;
-use std::io::Read;
 use crate::core::tone::{MeterTone, MeterToneType};
 
-pub fn parse_cipai(file_path: &str) -> Result<Vec<CiPai>> {
-    let mut file = File::open(file_path)?;
-    let mut content = String::new();
-    file.read_to_string(&mut content)?;
-    let result = roxmltree::Document::parse(&content)?
+pub fn parse_cipai(content: &str) -> Result<Vec<CiPai>> {
+    let result = roxmltree::Document::parse(content)?
         .descendants()
         .filter(|n| n.has_tag_name("词牌"))
         .flat_map(|n| {

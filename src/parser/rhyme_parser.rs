@@ -2,12 +2,10 @@ use crate::core::rhyme::{Rhyme, RhymeDict, RhymeId};
 use crate::core::tone::BasicTone;
 use anyhow::{bail, Context, Result};
 use serde_json::Value;
-use std::fs::File;
 use std::sync::Arc;
 
-pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
-    let file = File::open(file_path)?;
-    let json: Value = serde_json::from_reader(file)?;
+pub fn parse_pingshui(content: &str) -> Result<RhymeDict> {
+    let json: Value = serde_json::from_str(content)?;
     let json_format_err = "平水韵文件格式错误";
     let mut rhymes= vec![];
     let mut rhyme_chars = vec![];
@@ -49,9 +47,8 @@ pub fn parse_pingshui(file_path: &str) -> Result<RhymeDict> {
 }
 
 
-pub fn parse_cilin(file_path: &str) -> Result<RhymeDict> {
-    let file = File::open(file_path)?;
-    let json: Value = serde_json::from_reader(file)?;
+pub fn parse_cilin(content: &str) -> Result<RhymeDict> {
+    let json: Value = serde_json::from_str(content)?;
     let json_format_err = "文件格式错误";
     let mut rhymes= vec![];
     let mut rhyme_chars = vec![];
