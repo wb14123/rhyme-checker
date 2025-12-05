@@ -17,5 +17,5 @@ colored = "3.0.0"
 palette="0.7.6"
 
 wasm-bindgen = "0.2"
-clap_web_code_gen = { path = "../clap-web-gen/code_gen" }
-clap_web_macro = { path = "../clap-web-gen/code_gen_macro" }
+clap_web_code_gen = "0.1.0"
+clap_web_macro = "0.1.0"

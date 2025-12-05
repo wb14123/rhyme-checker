@@ -29,8 +29,8 @@ cargo build --release
 
 ```
 ~/.cargo/bin/wasm-pack build --target web
-cargo install --path ../clap-web-gen/code_gen --bin generate-web-ui
-~/.cargo/bin/generate-web-ui
+cargo install clap_web_code_gen
+~/.cargo/bin/clap-web-gen
 ```
 
 ## 使用

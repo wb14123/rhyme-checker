@@ -134,6 +134,8 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 [[package]]
 name = "clap_web_code_gen"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "693588b8bc4cda811b25bc664494a8b1485dc112e9f6223af9cd0a96826209f4"
 dependencies = [
  "clap",
  "clap_web_macro",
@@ -149,6 +151,8 @@ dependencies = [
 [[package]]
 name = "clap_web_macro"
 version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0720c875d0b547a552534e33ab48d939b493fe38ee3130cf74d362c63a7fa974"
 dependencies = [
  "proc-macro2",
  "quote",
