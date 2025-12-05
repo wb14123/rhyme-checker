@@ -25,6 +25,14 @@ cargo build --release
 ./target/release/rhyme-checker
 ```
 
+### Build Web UI
+
+```
+~/.cargo/bin/wasm-pack build --target web
+cargo install --path ../clap-web-gen/code_gen --bin generate-web-ui
+~/.cargo/bin/generate-web-ui
+```
+
 ## 使用
 
 `./rhyme-checker --help` 查看使用方法。需要配合 `data/` 下的数据文件一起使用。
