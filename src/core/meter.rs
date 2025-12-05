@@ -13,7 +13,7 @@ pub fn get_match_legend() -> String {
     if SHOULD_COLORIZE.should_colorize() {
         format!(
             "匹配结果说明：{}=完全匹配 {}=仅音调匹配 {}=不匹配",
-            "字(白色)".white(),
+            "字(默认颜色)".normal(),
             "字(橙色)".truecolor(255, 165, 0),
             "字(红色)".red()
         )
@@ -50,7 +50,7 @@ impl Display for SentenceMatchResult {
                             MatchType::NoMatch => char_str.red(),
                             MatchType::ToneOnly =>
                                 char_str.truecolor(255, 165, 0), // orange
-                            MatchType::AllMatch => char_str.white(),
+                            MatchType::AllMatch => char_str.normal(),
                         }
                     };
                     write!(f, "{}", colored_char)?;

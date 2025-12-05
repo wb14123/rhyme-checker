@@ -233,6 +233,8 @@ fn best_match_cipai(rhyme_dict: &RhymeDict, top: usize, text: &str) -> Result<()
 pub fn run(cli: &Cli) -> Result<()> {
     if cli.no_color {
         colored::control::set_override(false);
+    } else {
+        colored::control::set_override(true);
     }
 
     let rhyme_dict = match cli.dict_type {
