@@ -5,7 +5,7 @@ mod parser;
 use std::sync::Arc;
 use anyhow::{bail, Result};
 use clap::{Parser, Subcommand, ValueEnum};
-use code_gen_macro::{web_ui_bind, wprint, wprintln};
+use clap_web_macro::{web_ui_bind, wprint, wprintln};
 use parser::rhyme_parser::parse_pingshui;
 use parser::cipai_parser::parse_cipai;
 use crate::core::cipai::best_match;
@@ -32,7 +32,7 @@ enum DictType {
 
 #[derive(Parser)]
 #[command(name = "rhyme-checker")]
-#[command(about = "查询汉字韵律信息", long_about = None)]
+#[command(about = "诗词格律检查工具", long_about = None)]
 pub struct Cli {
     /// 韵书类型
     #[arg(short = 't', long, value_enum, default_value = "cilin")]

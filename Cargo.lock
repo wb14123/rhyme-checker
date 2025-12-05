@@ -132,11 +132,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
-name = "code_gen"
+name = "clap_web_code_gen"
 version = "0.1.0"
 dependencies = [
  "clap",
- "code_gen_macro",
+ "clap_web_macro",
  "maud",
  "paste",
  "proc-macro2",
@@ -147,7 +147,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "code_gen_macro"
+name = "clap_web_macro"
 version = "0.1.0"
 dependencies = [
  "proc-macro2",
@@ -399,8 +399,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
- "code_gen",
- "code_gen_macro",
+ "clap_web_code_gen",
+ "clap_web_macro",
  "colored",
  "palette",
  "roxmltree",
