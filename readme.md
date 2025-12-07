@@ -2,6 +2,8 @@
 
 检测诗词格律的命令行工具。
 
+本工具也通过 [clap-web-gen](https://github.com/wb14123/clap-web-gen) 提供[网页版本](https://ci.binwang.me/) 。
+
 ## 功能
 
 * 查询单字韵律。
